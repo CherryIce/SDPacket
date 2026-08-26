@@ -1,0 +1,33 @@
+name: moving_box
+description: "Offline-first moving box registration and location app."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  cross_file: ^0.3.5+2
+  file_picker: ^11.0.3
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  image_picker: ^1.2.2
+  mobile_scanner: ^7.4.0
+  path_provider: ^2.1.5
+  pdf: ^3.12.0
+  printing: ^5.14.3
+  qr_flutter: ^4.1.0
+  share_plus: ^12.0.2
+  speech_to_text: ^7.4.0
+  uuid: ^4.6.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  generate: true
+  uses-material-design: true
