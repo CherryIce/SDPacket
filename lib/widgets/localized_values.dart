@@ -29,3 +29,10 @@ extension LocalizedIssue on BoxIssue {
     BoxIssue.damagedContents => context.l10n.damagedContents,
   };
 }
+
+extension LocalizedStatusChangeSource on StatusChangeSource {
+  String label(BuildContext context) => switch (this) {
+    StatusChangeSource.manual => context.l10n.statusSourceManual,
+    StatusChangeSource.scanner => context.l10n.statusSourceScanner,
+  };
+}

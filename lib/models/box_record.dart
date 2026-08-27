@@ -6,24 +6,79 @@ enum PhysicalMarkMethod { qrLabel, handwritten, stickyNote, other }
 
 enum BoxIssue { suspectedMissing, damagedBox, damagedContents }
 
+enum StatusChangeSource { manual, scanner }
+
+class StatusHistoryEntry {
+  const StatusHistoryEntry({
+    required this.id,
+    required this.from,
+    required this.to,
+    required this.source,
+    required this.changedAt,
+  });
+
+  final String id;
+  final MoveStatus from;
+  final MoveStatus to;
+  final StatusChangeSource source;
+  final DateTime changedAt;
+
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'from': from.name,
+    'to': to.name,
+    'source': source.name,
+    'changedAt': changedAt.toIso8601String(),
+  };
+
+  factory StatusHistoryEntry.fromJson(Map<String, Object?> json) =>
+      StatusHistoryEntry(
+        id: _requiredString(json, 'id'),
+        from: MoveStatus.values.byName(_requiredString(json, 'from')),
+        to: MoveStatus.values.byName(_requiredString(json, 'to')),
+        source: StatusChangeSource.values.byName(
+          json['source'] as String? ?? StatusChangeSource.manual.name,
+        ),
+        changedAt: DateTime.parse(_requiredString(json, 'changedAt')),
+      );
+}
+
 class BoxItem {
   const BoxItem({
     required this.id,
     required this.name,
     this.quantity,
     this.note = '',
+    this.isUnpacked = false,
   });
 
   final String id;
   final String name;
   final int? quantity;
   final String note;
+  final bool isUnpacked;
+
+  BoxItem copyWith({
+    String? name,
+    Object? quantity = _unset,
+    String? note,
+    bool? isUnpacked,
+  }) {
+    return BoxItem(
+      id: id,
+      name: name ?? this.name,
+      quantity: identical(quantity, _unset) ? this.quantity : quantity as int?,
+      note: note ?? this.note,
+      isUnpacked: isUnpacked ?? this.isUnpacked,
+    );
+  }
 
   Map<String, Object?> toJson() => {
     'id': id,
     'name': name,
     'quantity': quantity,
     'note': note,
+    'isUnpacked': isUnpacked,
   };
 
   factory BoxItem.fromJson(Map<String, Object?> json) => BoxItem(
@@ -31,6 +86,7 @@ class BoxItem {
     name: json['name'] as String,
     quantity: (json['quantity'] as num?)?.toInt(),
     note: json['note'] as String? ?? '',
+    isUnpacked: json['isUnpacked'] as bool? ?? false,
   );
 }
 
@@ -53,6 +109,7 @@ class BoxRecord {
     this.physicalMarkStatus = PhysicalMarkStatus.pending,
     this.physicalMarkMethod,
     this.issues = const {},
+    this.statusHistory = const [],
     this.labelExportedAt,
     this.physicalMarkedAt,
   });
@@ -72,6 +129,7 @@ class BoxRecord {
   final PhysicalMarkStatus physicalMarkStatus;
   final PhysicalMarkMethod? physicalMarkMethod;
   final Set<BoxIssue> issues;
+  final List<StatusHistoryEntry> statusHistory;
   final DateTime? labelExportedAt;
   final DateTime? physicalMarkedAt;
   final DateTime createdAt;
@@ -91,6 +149,7 @@ class BoxRecord {
     PhysicalMarkStatus? physicalMarkStatus,
     Object? physicalMarkMethod = _unset,
     Set<BoxIssue>? issues,
+    List<StatusHistoryEntry>? statusHistory,
     Object? labelExportedAt = _unset,
     Object? physicalMarkedAt = _unset,
     DateTime? updatedAt,
@@ -113,6 +172,7 @@ class BoxRecord {
           ? this.physicalMarkMethod
           : physicalMarkMethod as PhysicalMarkMethod?,
       issues: issues ?? this.issues,
+      statusHistory: statusHistory ?? this.statusHistory,
       labelExportedAt: identical(labelExportedAt, _unset)
           ? this.labelExportedAt
           : labelExportedAt as DateTime?,
@@ -157,6 +217,7 @@ class BoxRecord {
     'physicalMarkStatus': physicalMarkStatus.name,
     'physicalMarkMethod': physicalMarkMethod?.name,
     'issues': issues.map((issue) => issue.name).toList(),
+    'statusHistory': statusHistory.map((entry) => entry.toJson()).toList(),
     'labelExportedAt': labelExportedAt?.toIso8601String(),
     'physicalMarkedAt': physicalMarkedAt?.toIso8601String(),
     'createdAt': createdAt.toIso8601String(),
@@ -191,6 +252,9 @@ class BoxRecord {
         json['physicalMarkMethod'],
       ),
       issues: _stringList(json['issues']).map(BoxIssue.values.byName).toSet(),
+      statusHistory: _mapList(
+        json['statusHistory'],
+      ).map(StatusHistoryEntry.fromJson).toList(growable: false),
       labelExportedAt: _optionalDate(json['labelExportedAt']),
       physicalMarkedAt: _optionalDate(json['physicalMarkedAt']),
       createdAt: DateTime.parse(_requiredString(json, 'createdAt')),

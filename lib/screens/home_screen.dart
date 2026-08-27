@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../app.dart';
 import '../data/app_store.dart';
 import '../models/moving_project.dart';
+import '../widgets/ios_modal.dart';
 import '../widgets/project_form_dialog.dart';
 import 'archived_projects_screen.dart';
 import 'global_search_screen.dart';
@@ -22,6 +23,34 @@ class HomeScreen extends StatelessWidget {
         ),
       );
     }
+  }
+
+  Future<void> _showMore(BuildContext context) async {
+    final action = await showIosActionSheet<_HomeAction>(
+      context: context,
+      cancelLabel: context.l10n.cancel,
+      options: [
+        IosActionSheetOption(
+          label: context.l10n.archivedProjects,
+          value: _HomeAction.archived,
+          icon: Icons.archive_outlined,
+        ),
+        IosActionSheetOption(
+          label: context.l10n.settings,
+          value: _HomeAction.settings,
+          icon: Icons.settings_outlined,
+        ),
+      ],
+    );
+    if (action == null || !context.mounted) return;
+    final screen = switch (action) {
+      _HomeAction.archived => const ArchivedProjectsScreen(),
+      _HomeAction.settings => const SettingsScreen(),
+    };
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(builder: (_) => screen),
+    );
   }
 
   @override
@@ -79,35 +108,10 @@ class HomeScreen extends StatelessWidget {
             ),
             icon: const Icon(Icons.search),
           ),
-          PopupMenuButton<_HomeAction>(
-            onSelected: (action) {
-              final screen = switch (action) {
-                _HomeAction.archived => const ArchivedProjectsScreen(),
-                _HomeAction.settings => const SettingsScreen(),
-              };
-              Navigator.push(
-                context,
-                MaterialPageRoute<void>(builder: (_) => screen),
-              );
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: _HomeAction.archived,
-                child: ListTile(
-                  leading: const Icon(Icons.archive_outlined),
-                  title: Text(context.l10n.archivedProjects),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              PopupMenuItem(
-                value: _HomeAction.settings,
-                child: ListTile(
-                  leading: const Icon(Icons.settings_outlined),
-                  title: Text(context.l10n.settings),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-            ],
+          IconButton(
+            tooltip: context.l10n.moreActions,
+            onPressed: () => _showMore(context),
+            icon: const Icon(Icons.more_horiz),
           ),
         ],
       ),
@@ -236,7 +240,9 @@ class _MetricChip extends StatelessWidget {
         children: [
           Icon(icon, size: 16, color: color),
           const SizedBox(width: 6),
-          Text(label, style: TextStyle(color: color)),
+          Flexible(
+            child: Text(label, style: TextStyle(color: color), softWrap: true),
+          ),
         ],
       ),
     );

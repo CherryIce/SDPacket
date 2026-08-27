@@ -33,6 +33,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scanSize = (MediaQuery.sizeOf(context).shortestSide - 64).clamp(
+      180.0,
+      260.0,
+    );
     return Scaffold(
       appBar: AppBar(title: Text(context.l10n.scan)),
       body: Stack(
@@ -42,15 +46,15 @@ class _ScannerScreenState extends State<ScannerScreen> {
             onDetect: _onDetect,
             scanWindow: Rect.fromCenter(
               center: MediaQuery.sizeOf(context).center(Offset.zero),
-              width: 260,
-              height: 260,
+              width: scanSize,
+              height: scanSize,
             ),
           ),
           Center(
             child: IgnorePointer(
               child: Container(
-                width: 260,
-                height: 260,
+                width: scanSize,
+                height: scanSize,
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.white, width: 3),
                   borderRadius: BorderRadius.circular(20),

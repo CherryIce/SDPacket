@@ -33,6 +33,63 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings => 'Settings';
 
   @override
+  String get moreActions => 'More actions';
+
+  @override
+  String get language => 'Language';
+
+  @override
+  String get chooseLanguage => 'Choose language';
+
+  @override
+  String get simplifiedChinese => 'Simplified Chinese';
+
+  @override
+  String get english => 'English';
+
+  @override
+  String get languageChangeFailed => 'Couldn\'t change language. Try again.';
+
+  @override
+  String get onboardingSkip => 'Skip';
+
+  @override
+  String get onboardingNext => 'Next';
+
+  @override
+  String get onboardingGetStarted => 'Get started';
+
+  @override
+  String get onboardingQuickTitle => 'Register each box in seconds';
+
+  @override
+  String get onboardingQuickBody =>
+      'Take a photo or enter a short note. Your box record is saved locally right away.';
+
+  @override
+  String get onboardingFindTitle => 'Find packed items offline';
+
+  @override
+  String get onboardingFindBody =>
+      'Search box codes, rooms, notes and item names even when you have no signal.';
+
+  @override
+  String get onboardingTrackTitle => 'Keep every move stage clear';
+
+  @override
+  String get onboardingTrackBody =>
+      'Track packed, loaded, arrived and unpacked boxes without mixing up digital records and physical labels.';
+
+  @override
+  String onboardingProgress(int current, int total) {
+    return 'Page $current of $total';
+  }
+
+  @override
+  String get onboardingSavingFailed =>
+      'Couldn\'t save your onboarding choice. Try again.';
+
+  @override
   String get noProjects => 'No moving projects yet';
 
   @override
@@ -103,6 +160,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get takePhoto => 'Take photo';
 
   @override
+  String get continuousCamera => 'Continuous camera';
+
+  @override
   String get choosePhotos => 'Choose photos';
 
   @override
@@ -113,6 +173,55 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get photoLimit => 'Choose up to 30 photos per batch.';
+
+  @override
+  String batchCaptureCount(int count) {
+    return '$count boxes captured';
+  }
+
+  @override
+  String get batchCaptureHint =>
+      'Each photo immediately creates and saves a box draft. Keep shooting, then edit the batch box by box.';
+
+  @override
+  String get noBatchPhotos => 'Photograph the first box to start this batch.';
+
+  @override
+  String get editBatch => 'Edit batch';
+
+  @override
+  String get takeNextPhoto => 'Next box photo';
+
+  @override
+  String batchProgress(int current, int total) {
+    return 'Box $current / $total';
+  }
+
+  @override
+  String get applyToRemaining => 'Apply to batch';
+
+  @override
+  String get applyToRemainingHint =>
+      'Apply to batch copies the current room and tags to this and all remaining boxes.';
+
+  @override
+  String get batchDetailsApplied =>
+      'Room and tags applied to the remaining batch';
+
+  @override
+  String get skip => 'Skip';
+
+  @override
+  String get saveAndNext => 'Save and next';
+
+  @override
+  String get finishBatch => 'Save and finish';
+
+  @override
+  String get batchUnavailable => 'This entry batch is finished or unavailable.';
+
+  @override
+  String get resumeBatch => 'Resume unfinished batch';
 
   @override
   String batchCreated(int count, Object from, Object to) {
@@ -223,6 +332,63 @@ class AppLocalizationsEn extends AppLocalizations {
   String get itemsHint => 'Separate item names with commas (optional)';
 
   @override
+  String get addItem => 'Add item';
+
+  @override
+  String get editItem => 'Edit item';
+
+  @override
+  String get itemName => 'Item name';
+
+  @override
+  String get itemNameRequired => 'Enter an item name';
+
+  @override
+  String get itemQuantity => 'Quantity (optional)';
+
+  @override
+  String get itemQuantityInvalid => 'Enter an integer greater than 0';
+
+  @override
+  String itemQuantityValue(int quantity) {
+    return 'Quantity $quantity';
+  }
+
+  @override
+  String get itemNote => 'Item note (optional)';
+
+  @override
+  String get noStructuredItems =>
+      'No structured items yet. You can keep using free-form notes only.';
+
+  @override
+  String get quickTemplates => 'Quick templates';
+
+  @override
+  String get templateKitchen => 'Kitchen';
+
+  @override
+  String get templateBedroom => 'Bedroom';
+
+  @override
+  String get templateOldHome => 'Old home';
+
+  @override
+  String get templateNewHome => 'New home';
+
+  @override
+  String get templateStorage => 'Storage';
+
+  @override
+  String get templateFragile => 'Fragile';
+
+  @override
+  String get templateKeepDry => 'Keep dry';
+
+  @override
+  String get templateUnpackFirst => 'Unpack first';
+
+  @override
   String get duplicateCode => 'This code is already used in the project';
 
   @override
@@ -235,7 +401,48 @@ class AppLocalizationsEn extends AppLocalizations {
   String get qrAndPrint => 'QR and printing';
 
   @override
+  String get labelDocumentTitle => 'Moving Box Labels';
+
+  @override
+  String get labelBrand => 'MOVE BOX';
+
+  @override
+  String get scanOrSearchCode => 'SCAN OR SEARCH CODE';
+
+  @override
   String get scan => 'Scan box label';
+
+  @override
+  String get movingScanMode => 'Moving-site scanner';
+
+  @override
+  String get scanTargetStatus => 'Advance scanned boxes to';
+
+  @override
+  String repeatedScan(Object code, Object status) {
+    return '$code was already scanned or is already at $status or later';
+  }
+
+  @override
+  String scanUpdated(Object code, Object status) {
+    return '$code updated to $status';
+  }
+
+  @override
+  String scannedCount(int count) {
+    return '$count scanned this session';
+  }
+
+  @override
+  String unscannedCount(int count) {
+    return '$count still need scanning';
+  }
+
+  @override
+  String get viewUnscanned => 'Unscanned list';
+
+  @override
+  String get allScanned => 'No boxes remain for the selected target stage.';
 
   @override
   String get unsupportedQr =>
@@ -247,6 +454,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get moveStatus => 'Move status';
+
+  @override
+  String get statusHistory => 'Status history';
+
+  @override
+  String get undoLastStatus => 'Undo latest';
+
+  @override
+  String get noStatusHistory => 'No status changes yet.';
+
+  @override
+  String get statusUndoSuccess => 'The latest status change was undone';
+
+  @override
+  String get statusSourceManual => 'Manual edit';
+
+  @override
+  String get statusSourceScanner => 'Moving-site scan';
 
   @override
   String get issues => 'Issue flags';
@@ -279,6 +504,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get exportCsv => 'Export project CSV';
 
   @override
+  String get projectReport => 'Project closeout report';
+
+  @override
+  String reportGeneratedAt(Object value) {
+    return 'Generated: $value';
+  }
+
+  @override
+  String get reportDamaged => 'Damaged boxes';
+
+  @override
+  String get roomDistribution => 'Room distribution';
+
+  @override
+  String get reportNone => 'None';
+
+  @override
+  String get unassignedRoom => 'No room assigned';
+
+  @override
+  String get moreRooms => 'Other rooms';
+
+  @override
   String get backup => 'Share local backup';
 
   @override
@@ -292,6 +540,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get restoreSuccess => 'Backup restored';
 
   @override
+  String restoreSuccessMissingPhotos(int count) {
+    return 'Backup restored with $count missing photos';
+  }
+
+  @override
   String get invalidBackup =>
       'Invalid or unsupported backup. Existing data was not changed.';
 
@@ -299,11 +552,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get privacy => 'Privacy';
 
   @override
+  String get localPrivacyFallback =>
+      'Public URL not configured; showing the built-in privacy notice';
+
+  @override
   String get privacyBody =>
       'Projects, boxes, notes and photos stay on this device by default. Core features do not require accounts, ad SDKs or third-party AI. QR codes contain only a format version, project ID, box ID and readable code—not addresses, photos or item lists. Camera, photos, microphone and speech permissions are requested only when you use those features.';
 
   @override
   String get about => 'About Moving Box';
+
+  @override
+  String get contactSupport => 'Contact support';
+
+  @override
+  String get supportEmailSubject => 'Moving Box app support';
+
+  @override
+  String get supportNotConfigured =>
+      'A support email has not been configured. Provide SUPPORT_EMAIL for release builds.';
+
+  @override
+  String versionBuild(Object version, Object build) {
+    return 'Version $version ($build)';
+  }
 
   @override
   String get aboutBody =>
@@ -366,6 +638,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get projectDashboard => 'Project overview';
+
+  @override
+  String get waitingToLoad => 'Waiting to load';
+
+  @override
+  String get notArrived => 'Not arrived';
+
+  @override
+  String get notUnpacked => 'Not unpacked';
+
+  @override
+  String get stageFilterHint =>
+      'Tap stages to filter. Multiple stages can be selected.';
+
+  @override
+  String get clearFilters => 'Clear filters';
 
   @override
   String get boxes => 'Boxes';

@@ -4,6 +4,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'data/app_store.dart';
 import 'l10n/app_localizations.dart';
 import 'screens/home_screen.dart';
+import 'screens/onboarding_screen.dart';
+import 'theme/app_theme.dart';
 
 class MovingBoxApp extends StatelessWidget {
   const MovingBoxApp({super.key, required this.store});
@@ -12,48 +14,41 @@ class MovingBoxApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF315F52),
-      brightness: Brightness.light,
-      surface: const Color(0xFFF7F5EF),
-    );
     return StoreScope(
       store: store,
-      child: MaterialApp(
-        onGenerateTitle: (context) => context.l10n.appTitle,
-        debugShowCheckedModeBanner: false,
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-        ],
-        supportedLocales: AppLocalizations.supportedLocales,
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: colorScheme,
-          scaffoldBackgroundColor: colorScheme.surface,
-          cardTheme: CardThemeData(
-            elevation: 0,
-            color: colorScheme.surfaceContainerLowest,
-            margin: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-              side: BorderSide(color: colorScheme.outlineVariant),
-            ),
-          ),
-          inputDecorationTheme: InputDecorationTheme(
-            filled: true,
-            fillColor: colorScheme.surfaceContainerLowest,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide.none,
-            ),
-          ),
+      child: ValueListenableBuilder<String>(
+        valueListenable: store.languageCodeListenable,
+        builder: (context, languageCode, _) => MaterialApp(
+          onGenerateTitle: (context) => context.l10n.appTitle,
+          debugShowCheckedModeBanner: false,
+          locale: Locale(languageCode),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: ThemeMode.system,
+          home: const _AppEntry(),
         ),
-        home: const HomeScreen(),
       ),
     );
+  }
+}
+
+class _AppEntry extends StatelessWidget {
+  const _AppEntry();
+
+  @override
+  Widget build(BuildContext context) {
+    final store = StoreScope.of(context);
+    if (store.isReady && !store.hasCompletedOnboarding) {
+      return const OnboardingScreen();
+    }
+    return const HomeScreen();
   }
 }
 

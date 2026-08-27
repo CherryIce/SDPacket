@@ -2,7 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/box_record.dart';
+import '../models/entry_batch.dart';
 import '../models/moving_project.dart';
+import '../services/backup_service.dart';
 import 'app_repository.dart';
 
 class SampleSeed {
@@ -28,6 +30,9 @@ class ProjectStats {
     required this.arrived,
     required this.unpacked,
     required this.suspectedMissing,
+    required this.waitingToLoad,
+    required this.notArrived,
+    required this.notUnpacked,
   });
 
   final int total;
@@ -37,26 +42,42 @@ class ProjectStats {
   final int arrived;
   final int unpacked;
   final int suspectedMissing;
+  final int waitingToLoad;
+  final int notArrived;
+  final int notUnpacked;
 }
 
 class DuplicateBoxCodeException implements Exception {}
 
 class AppStore extends ChangeNotifier {
-  AppStore({required AppRepository repository, Uuid? uuid})
-    : _repository = repository,
-      _uuid = uuid ?? const Uuid();
+  AppStore({
+    required AppRepository repository,
+    Uuid? uuid,
+    BackupService? backupService,
+    String initialLanguageCode = 'en',
+  }) : _repository = repository,
+       _uuid = uuid ?? const Uuid(),
+       _backupService = backupService ?? BackupService(),
+       _languageCode = ValueNotifier(
+         initialLanguageCode.toLowerCase().startsWith('zh') ? 'zh' : 'en',
+       );
 
   final AppRepository _repository;
   final Uuid _uuid;
+  final BackupService _backupService;
+  final ValueNotifier<String> _languageCode;
 
   List<MovingProject> _projects = [];
   List<BoxRecord> _boxes = [];
+  List<EntryBatch> _entryBatches = [];
   bool _hasSeededExample = false;
+  bool _hasCompletedOnboarding = false;
   bool _isReady = false;
   Object? _initializationError;
 
   bool get isReady => _isReady;
   Object? get initializationError => _initializationError;
+  bool get hasCompletedOnboarding => _hasCompletedOnboarding;
   List<MovingProject> get activeProjects =>
       _projects.where((project) => !project.isArchived).toList(growable: false)
         ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
@@ -65,16 +86,37 @@ class AppStore extends ChangeNotifier {
         ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
   List<MovingProject> get allProjects => List.unmodifiable(_projects);
   List<BoxRecord> get allBoxes => List.unmodifiable(_boxes);
+  List<EntryBatch> get allEntryBatches => List.unmodifiable(_entryBatches);
+  String get languageCode => _languageCode.value;
+  ValueListenable<String> get languageCodeListenable => _languageCode;
 
   Future<void> initialize(SampleSeed seed) async {
     _isReady = false;
     _initializationError = null;
     notifyListeners();
     try {
+      String? savedLanguageCode;
+      try {
+        savedLanguageCode = await _repository.loadLanguageCode();
+      } catch (_) {
+        // A preference read must not prevent the local moving data from loading.
+      }
+      if (savedLanguageCode == 'zh' || savedLanguageCode == 'en') {
+        _languageCode.value = savedLanguageCode!;
+      }
+      try {
+        _hasCompletedOnboarding = await _repository
+            .loadHasCompletedOnboarding();
+      } catch (_) {
+        // A preference read must not prevent the local moving data from loading.
+      }
       final loaded = await _repository.load();
       if (loaded != null) {
         _projects = loaded.projects.toList();
         _boxes = loaded.boxes.toList();
+        _entryBatches = loaded.entryBatches
+            .where((batch) => batch.hasBoxes && !batch.isFinished)
+            .toList();
         _hasSeededExample = loaded.hasSeededExample;
       }
       if (!_hasSeededExample) {
@@ -84,6 +126,28 @@ class AppStore extends ChangeNotifier {
     } catch (error) {
       _initializationError = error;
     }
+    notifyListeners();
+  }
+
+  Future<void> setLanguageCode(String languageCode) async {
+    if (languageCode != 'zh' && languageCode != 'en') {
+      throw ArgumentError.value(languageCode, 'languageCode');
+    }
+    if (_languageCode.value == languageCode) return;
+    final previous = _languageCode.value;
+    _languageCode.value = languageCode;
+    try {
+      await _repository.saveLanguageCode(languageCode);
+    } catch (_) {
+      _languageCode.value = previous;
+      rethrow;
+    }
+  }
+
+  Future<void> completeOnboarding() async {
+    if (_hasCompletedOnboarding) return;
+    await _repository.saveHasCompletedOnboarding(true);
+    _hasCompletedOnboarding = true;
     notifyListeners();
   }
 
@@ -125,6 +189,27 @@ class AppStore extends ChangeNotifier {
     return null;
   }
 
+  EntryBatch? entryBatchById(String id) {
+    for (final batch in _entryBatches) {
+      if (batch.id == id) return batch;
+    }
+    return null;
+  }
+
+  EntryBatch? activeEntryBatchForProject(String projectId) {
+    final batches =
+        _entryBatches
+            .where(
+              (batch) =>
+                  batch.projectId == projectId &&
+                  batch.hasBoxes &&
+                  !batch.isFinished,
+            )
+            .toList()
+          ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    return batches.firstOrNull;
+  }
+
   List<BoxRecord> boxesForProject(String projectId, {String query = ''}) {
     final result = _boxes
         .where((box) => box.projectId == projectId && box.matches(query))
@@ -139,6 +224,28 @@ class AppStore extends ChangeNotifier {
     result.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
     return result;
   }
+
+  List<String> recentRoomsForProject(String projectId, {int limit = 6}) =>
+      _recentValues(
+        _recentBoxesForProject(projectId).map((box) => box.destinationRoom),
+        limit,
+      );
+
+  List<String> recentLocationsForProject(String projectId, {int limit = 6}) =>
+      _recentValues(
+        _recentBoxesForProject(projectId).map((box) => box.currentLocation),
+        limit,
+      );
+
+  List<String> recentTagsForProject(String projectId, {int limit = 8}) =>
+      _recentValues(
+        _recentBoxesForProject(projectId).expand((box) => box.tags),
+        limit,
+      );
+
+  List<BoxRecord> _recentBoxesForProject(String projectId) =>
+      _boxes.where((box) => box.projectId == projectId).toList()
+        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
 
   String nextCode(String projectId) {
     final project = projectById(projectId);
@@ -217,6 +324,7 @@ class AppStore extends ChangeNotifier {
     List<BoxItem> items = const [],
     List<String> photoPaths = const [],
     bool isPriority = false,
+    String? entryBatchId,
   }) async {
     final projectIndex = _projects.indexWhere(
       (project) => project.id == projectId,
@@ -236,7 +344,7 @@ class AppStore extends ChangeNotifier {
       currentLocation: currentLocation.trim(),
       memo: memo.trim(),
       tags: _cleanList(tags),
-      items: items,
+      items: _cleanItems(items),
       photoPaths: photoPaths,
       isPriority: isPriority,
       createdAt: now,
@@ -244,6 +352,7 @@ class AppStore extends ChangeNotifier {
     );
     final oldProjects = _projects;
     final oldBoxes = _boxes;
+    final oldBatches = _entryBatches;
     final nextProjects = oldProjects.toList();
     nextProjects[projectIndex] = project.copyWith(
       nextSequence: project.nextSequence + 1,
@@ -251,18 +360,39 @@ class AppStore extends ChangeNotifier {
     );
     _projects = nextProjects;
     _boxes = [...oldBoxes, box];
+    if (entryBatchId != null) {
+      final batchIndex = _entryBatches.indexWhere(
+        (batch) => batch.id == entryBatchId,
+      );
+      if (batchIndex < 0 || _entryBatches[batchIndex].projectId != projectId) {
+        _projects = oldProjects;
+        _boxes = oldBoxes;
+        throw StateError('Entry batch not found');
+      }
+      final nextBatches = _entryBatches.toList();
+      final batch = nextBatches[batchIndex];
+      nextBatches[batchIndex] = batch.copyWith(
+        boxIds: [...batch.boxIds, box.id],
+        updatedAt: now,
+      );
+      _entryBatches = nextBatches;
+    }
     try {
       await _persist();
     } catch (_) {
       _projects = oldProjects;
       _boxes = oldBoxes;
+      _entryBatches = oldBatches;
       rethrow;
     }
     notifyListeners();
     return box;
   }
 
-  Future<void> updateBox(BoxRecord updated) async {
+  Future<void> updateBox(
+    BoxRecord updated, {
+    StatusChangeSource statusSource = StatusChangeSource.manual,
+  }) async {
     final index = _boxes.indexWhere((box) => box.id == updated.id);
     if (index < 0) throw StateError('Box not found');
     final code = updated.shortCode.trim().toUpperCase();
@@ -271,6 +401,19 @@ class AppStore extends ChangeNotifier {
     }
     final previous = _boxes;
     final next = previous.toList();
+    final current = previous[index];
+    final statusHistory = current.statusHistory.toList();
+    if (current.moveStatus != updated.moveStatus) {
+      statusHistory.add(
+        StatusHistoryEntry(
+          id: _uuid.v4(),
+          from: current.moveStatus,
+          to: updated.moveStatus,
+          source: statusSource,
+          changedAt: DateTime.now(),
+        ),
+      );
+    }
     next[index] = updated.copyWith(
       shortCode: code,
       title: updated.title.trim(),
@@ -278,6 +421,8 @@ class AppStore extends ChangeNotifier {
       currentLocation: updated.currentLocation.trim(),
       memo: updated.memo.trim(),
       tags: _cleanList(updated.tags),
+      items: _cleanItems(updated.items),
+      statusHistory: statusHistory,
       updatedAt: DateTime.now(),
     );
     _boxes = next;
@@ -290,13 +435,153 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> deleteBox(String id) async {
+  Future<void> undoLastStatusChange(String boxId) async {
+    final index = _boxes.indexWhere((box) => box.id == boxId);
+    if (index < 0) throw StateError('Box not found');
+    final box = _boxes[index];
+    if (box.statusHistory.isEmpty) return;
+    final last = box.statusHistory.last;
     final previous = _boxes;
-    _boxes = _boxes.where((box) => box.id != id).toList();
+    final next = previous.toList();
+    next[index] = box.copyWith(
+      moveStatus: last.from,
+      statusHistory: box.statusHistory.sublist(0, box.statusHistory.length - 1),
+      updatedAt: DateTime.now(),
+    );
+    _boxes = next;
     try {
       await _persist();
     } catch (_) {
       _boxes = previous;
+      rethrow;
+    }
+    notifyListeners();
+  }
+
+  Future<EntryBatch> createEntryBatch({
+    required String projectId,
+    required EntryBatchSource source,
+  }) async {
+    projectById(projectId);
+    final now = DateTime.now();
+    final batch = EntryBatch(
+      id: _uuid.v4(),
+      projectId: projectId,
+      source: source,
+      boxIds: const [],
+      nextIndex: 0,
+      createdAt: now,
+      updatedAt: now,
+    );
+    final previous = _entryBatches;
+    _entryBatches = [..._entryBatches, batch];
+    try {
+      await _persist();
+    } catch (_) {
+      _entryBatches = previous;
+      rethrow;
+    }
+    notifyListeners();
+    return batch;
+  }
+
+  Future<void> advanceEntryBatch(String id, int nextIndex) async {
+    final index = _entryBatches.indexWhere((batch) => batch.id == id);
+    if (index < 0) throw StateError('Entry batch not found');
+    final previous = _entryBatches;
+    final next = previous.toList();
+    final batch = next[index];
+    next[index] = batch.copyWith(
+      nextIndex: nextIndex.clamp(0, batch.boxIds.length),
+      updatedAt: DateTime.now(),
+    );
+    _entryBatches = next;
+    try {
+      await _persist();
+    } catch (_) {
+      _entryBatches = previous;
+      rethrow;
+    }
+    notifyListeners();
+  }
+
+  Future<void> applyEntryBatchDetails(
+    String id, {
+    required int fromIndex,
+    String destinationRoom = '',
+    List<String> tags = const [],
+  }) async {
+    final batch = entryBatchById(id);
+    if (batch == null) throw StateError('Entry batch not found');
+    final ids = batch.boxIds
+        .skip(fromIndex.clamp(0, batch.boxIds.length))
+        .toSet();
+    final normalizedRoom = destinationRoom.trim();
+    final normalizedTags = _cleanList(tags);
+    final previous = _boxes;
+    final now = DateTime.now();
+    _boxes = _boxes.map((box) {
+      if (!ids.contains(box.id)) return box;
+      return box.copyWith(
+        destinationRoom: normalizedRoom.isEmpty
+            ? box.destinationRoom
+            : normalizedRoom,
+        tags: _cleanList([...box.tags, ...normalizedTags]),
+        updatedAt: now,
+      );
+    }).toList();
+    try {
+      await _persist();
+    } catch (_) {
+      _boxes = previous;
+      rethrow;
+    }
+    notifyListeners();
+  }
+
+  Future<void> finishEntryBatch(String id) async {
+    final previous = _entryBatches;
+    _entryBatches = _entryBatches.where((batch) => batch.id != id).toList();
+    try {
+      await _persist();
+    } catch (_) {
+      _entryBatches = previous;
+      rethrow;
+    }
+    notifyListeners();
+  }
+
+  Future<void> discardEmptyEntryBatch(String id) async {
+    final batch = entryBatchById(id);
+    if (batch == null || batch.hasBoxes) return;
+    await finishEntryBatch(id);
+  }
+
+  Future<void> deleteBox(String id) async {
+    final previous = _boxes;
+    final previousBatches = _entryBatches;
+    _boxes = _boxes.where((box) => box.id != id).toList();
+    _entryBatches = _entryBatches
+        .map((batch) {
+          final removedIndex = batch.boxIds.indexOf(id);
+          if (removedIndex < 0) return batch;
+          final nextIds = batch.boxIds.where((boxId) => boxId != id).toList();
+          final nextIndex = removedIndex < batch.nextIndex
+              ? batch.nextIndex - 1
+              : batch.nextIndex;
+          return batch.copyWith(
+            boxIds: nextIds,
+            nextIndex: nextIndex.clamp(0, nextIds.length),
+            updatedAt: DateTime.now(),
+          );
+        })
+        .where((batch) => batch.hasBoxes)
+        .toList();
+    try {
+      await _persist();
+    } catch (_) {
+      _boxes = previous;
+      _entryBatches = previousBatches;
       rethrow;
     }
     notifyListeners();
@@ -312,13 +597,18 @@ class AppStore extends ChangeNotifier {
   Future<void> deleteProject(String id) async {
     final oldProjects = _projects;
     final oldBoxes = _boxes;
+    final oldBatches = _entryBatches;
     _projects = _projects.where((project) => project.id != id).toList();
     _boxes = _boxes.where((box) => box.projectId != id).toList();
+    _entryBatches = _entryBatches
+        .where((batch) => batch.projectId != id)
+        .toList();
     try {
       await _persist();
     } catch (_) {
       _projects = oldProjects;
       _boxes = oldBoxes;
+      _entryBatches = oldBatches;
       rethrow;
     }
     notifyListeners();
@@ -375,28 +665,73 @@ class AppStore extends ChangeNotifier {
       suspectedMissing: boxes
           .where((box) => box.issues.contains(BoxIssue.suspectedMissing))
           .length,
+      waitingToLoad: boxes
+          .where((box) => box.moveStatus.index < MoveStatus.loaded.index)
+          .length,
+      notArrived: boxes
+          .where((box) => box.moveStatus.index < MoveStatus.arrived.index)
+          .length,
+      notUnpacked: boxes
+          .where((box) => box.moveStatus.index < MoveStatus.unpacked.index)
+          .length,
     );
   }
 
   Uint8List exportBackup() => _snapshot().toBytes();
 
+  Future<Uint8List> exportBackupPackage() =>
+      _backupService.createPackage(_snapshot());
+
   Future<void> importBackup(List<int> bytes) async {
     final imported = AppSnapshot.fromBytes(bytes);
     final oldProjects = _projects;
     final oldBoxes = _boxes;
+    final oldBatches = _entryBatches;
     final oldSeeded = _hasSeededExample;
     _projects = imported.projects.toList();
     _boxes = imported.boxes.toList();
+    _entryBatches = imported.entryBatches.toList();
     _hasSeededExample = imported.hasSeededExample;
     try {
       await _persist();
     } catch (_) {
       _projects = oldProjects;
       _boxes = oldBoxes;
+      _entryBatches = oldBatches;
       _hasSeededExample = oldSeeded;
       rethrow;
     }
     notifyListeners();
+  }
+
+  Future<int> importBackupPackage(List<int> bytes) async {
+    final prepared = await _backupService.prepareImport(bytes);
+    final oldProjects = _projects;
+    final oldBoxes = _boxes;
+    final oldBatches = _entryBatches;
+    final oldSeeded = _hasSeededExample;
+    _projects = prepared.snapshot.projects.toList();
+    _boxes = prepared.snapshot.boxes.toList();
+    _entryBatches = prepared.snapshot.entryBatches.toList();
+    _hasSeededExample = prepared.snapshot.hasSeededExample;
+    try {
+      await _persist();
+    } catch (_) {
+      _projects = oldProjects;
+      _boxes = oldBoxes;
+      _entryBatches = oldBatches;
+      _hasSeededExample = oldSeeded;
+      await _backupService.deleteManagedPhotos(prepared.importedPhotoPaths);
+      rethrow;
+    }
+    final retained = prepared.importedPhotoPaths.toSet();
+    await _backupService.deleteManagedPhotos(
+      oldBoxes
+          .expand((box) => box.photoPaths)
+          .where((path) => !retained.contains(path)),
+    );
+    notifyListeners();
+    return prepared.missingPhotoCount;
   }
 
   Future<void> _persist() => _repository.save(_snapshot());
@@ -404,8 +739,15 @@ class AppStore extends ChangeNotifier {
   AppSnapshot _snapshot() => AppSnapshot(
     projects: _projects,
     boxes: _boxes,
+    entryBatches: _entryBatches,
     hasSeededExample: _hasSeededExample,
   );
+
+  @override
+  void dispose() {
+    _languageCode.dispose();
+    super.dispose();
+  }
 }
 
 String _normalizedPrefix(String value) {
@@ -424,4 +766,23 @@ List<String> _cleanList(Iterable<String> values) {
       .map((value) => value.trim())
       .where((value) => value.isNotEmpty && seen.add(value.toLowerCase()))
       .toList(growable: false);
+}
+
+List<BoxItem> _cleanItems(Iterable<BoxItem> items) => items
+    .map(
+      (item) => item.copyWith(name: item.name.trim(), note: item.note.trim()),
+    )
+    .where((item) => item.name.isNotEmpty)
+    .toList(growable: false);
+
+List<String> _recentValues(Iterable<String> values, int limit) {
+  final seen = <String>{};
+  final result = <String>[];
+  for (final raw in values) {
+    final value = raw.trim();
+    if (value.isEmpty || !seen.add(value.toLowerCase())) continue;
+    result.add(value);
+    if (result.length >= limit) break;
+  }
+  return result;
 }

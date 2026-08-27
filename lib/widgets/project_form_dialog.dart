@@ -1,13 +1,15 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../app.dart';
 import '../models/moving_project.dart';
+import 'ios_modal.dart';
 
 Future<MovingProject?> showProjectFormDialog(
   BuildContext context, {
   MovingProject? project,
 }) {
-  return showDialog<MovingProject>(
+  return showIosFormDialog<MovingProject>(
     context: context,
     builder: (_) => ProjectFormDialog(project: project),
   );
@@ -81,13 +83,12 @@ class _ProjectFormDialogState extends State<ProjectFormDialog> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.project != null;
-    return AlertDialog(
-      title: Text(
-        isEditing ? context.l10n.editProject : context.l10n.newProject,
-      ),
-      content: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
+    return IosFormDialog(
+      title: isEditing ? context.l10n.editProject : context.l10n.newProject,
+      content: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -127,18 +128,15 @@ class _ProjectFormDialogState extends State<ProjectFormDialog> {
         ),
       ),
       actions: [
-        TextButton(
+        IosFormDialogAction(
+          label: context.l10n.cancel,
           onPressed: _saving ? null : () => Navigator.pop(context),
-          child: Text(context.l10n.cancel),
         ),
-        FilledButton(
+        IosFormDialogAction(
+          label: isEditing ? context.l10n.save : context.l10n.create,
+          isDefaultAction: true,
           onPressed: _saving ? null : _submit,
-          child: _saving
-              ? const SizedBox.square(
-                  dimension: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(isEditing ? context.l10n.save : context.l10n.create),
+          child: _saving ? const CupertinoActivityIndicator() : null,
         ),
       ],
     );

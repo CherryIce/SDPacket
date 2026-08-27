@@ -33,6 +33,59 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settings => '设置';
 
   @override
+  String get moreActions => '更多操作';
+
+  @override
+  String get language => '语言';
+
+  @override
+  String get chooseLanguage => '选择语言';
+
+  @override
+  String get simplifiedChinese => '简体中文';
+
+  @override
+  String get english => 'English';
+
+  @override
+  String get languageChangeFailed => '语言切换失败，请重试。';
+
+  @override
+  String get onboardingSkip => '跳过';
+
+  @override
+  String get onboardingNext => '下一步';
+
+  @override
+  String get onboardingGetStarted => '开始使用';
+
+  @override
+  String get onboardingQuickTitle => '十几秒登记一只箱子';
+
+  @override
+  String get onboardingQuickBody => '拍张照片或补一句备注，箱子记录会立即保存在本机。';
+
+  @override
+  String get onboardingFindTitle => '没网也能快速找到物品';
+
+  @override
+  String get onboardingFindBody => '离线搜索箱号、房间、备注和物品名称，搬家现场没有信号也不受影响。';
+
+  @override
+  String get onboardingTrackTitle => '每个搬运阶段都清清楚楚';
+
+  @override
+  String get onboardingTrackBody => '追踪已打包、已装车、已到达和已拆箱状态，同时避免数字记录与现实箱体标签错位。';
+
+  @override
+  String onboardingProgress(int current, int total) {
+    return '第 $current 页，共 $total 页';
+  }
+
+  @override
+  String get onboardingSavingFailed => '无法保存引导状态，请重试。';
+
+  @override
   String get noProjects => '还没有搬家项目';
 
   @override
@@ -102,6 +155,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get takePhoto => '拍照登记';
 
   @override
+  String get continuousCamera => '连续拍照';
+
+  @override
   String get choosePhotos => '批量选照片';
 
   @override
@@ -112,6 +168,52 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get photoLimit => '每批最多选择 30 张照片。';
+
+  @override
+  String batchCaptureCount(int count) {
+    return '本批已拍 $count 箱';
+  }
+
+  @override
+  String get batchCaptureHint => '每拍一张就立即创建并保存箱子草稿。可以继续拍摄，完成后再逐箱编辑。';
+
+  @override
+  String get noBatchPhotos => '拍下第一只箱子，开始本批登记。';
+
+  @override
+  String get editBatch => '编辑本批';
+
+  @override
+  String get takeNextPhoto => '拍下一箱';
+
+  @override
+  String batchProgress(int current, int total) {
+    return '第 $current / $total 箱';
+  }
+
+  @override
+  String get applyToRemaining => '批量套用';
+
+  @override
+  String get applyToRemainingHint => '“批量套用”会把当前房间和标签应用到本箱及本批后续箱子。';
+
+  @override
+  String get batchDetailsApplied => '房间和标签已应用到本批剩余箱子';
+
+  @override
+  String get skip => '跳过';
+
+  @override
+  String get saveAndNext => '保存并下一箱';
+
+  @override
+  String get finishBatch => '保存并完成本批';
+
+  @override
+  String get batchUnavailable => '这个登记批次已完成或不存在。';
+
+  @override
+  String get resumeBatch => '继续未完成批次';
 
   @override
   String batchCreated(int count, Object from, Object to) {
@@ -222,6 +324,62 @@ class AppLocalizationsZh extends AppLocalizations {
   String get itemsHint => '用逗号分隔物品名称（可选）';
 
   @override
+  String get addItem => '添加物品';
+
+  @override
+  String get editItem => '编辑物品';
+
+  @override
+  String get itemName => '物品名称';
+
+  @override
+  String get itemNameRequired => '请输入物品名称';
+
+  @override
+  String get itemQuantity => '数量（可选）';
+
+  @override
+  String get itemQuantityInvalid => '请输入大于 0 的整数';
+
+  @override
+  String itemQuantityValue(int quantity) {
+    return '数量 $quantity';
+  }
+
+  @override
+  String get itemNote => '物品备注（可选）';
+
+  @override
+  String get noStructuredItems => '尚未添加结构化物品。可继续只使用整段备注。';
+
+  @override
+  String get quickTemplates => '快捷模板';
+
+  @override
+  String get templateKitchen => '厨房';
+
+  @override
+  String get templateBedroom => '卧室';
+
+  @override
+  String get templateOldHome => '旧家';
+
+  @override
+  String get templateNewHome => '新家';
+
+  @override
+  String get templateStorage => '储物间';
+
+  @override
+  String get templateFragile => '易碎';
+
+  @override
+  String get templateKeepDry => '怕潮';
+
+  @override
+  String get templateUnpackFirst => '优先拆箱';
+
+  @override
   String get duplicateCode => '该箱号已在当前项目中使用';
 
   @override
@@ -234,7 +392,48 @@ class AppLocalizationsZh extends AppLocalizations {
   String get qrAndPrint => '二维码与打印';
 
   @override
+  String get labelDocumentTitle => '搬家箱标签';
+
+  @override
+  String get labelBrand => '搬家箱';
+
+  @override
+  String get scanOrSearchCode => '扫码或搜索箱号';
+
+  @override
   String get scan => '扫描箱子标签';
+
+  @override
+  String get movingScanMode => '搬家现场扫码';
+
+  @override
+  String get scanTargetStatus => '扫码后推进到';
+
+  @override
+  String repeatedScan(Object code, Object status) {
+    return '$code 已扫描或当前已是“$status”及之后状态';
+  }
+
+  @override
+  String scanUpdated(Object code, Object status) {
+    return '$code 已更新为“$status”';
+  }
+
+  @override
+  String scannedCount(int count) {
+    return '本次已扫描 $count 箱';
+  }
+
+  @override
+  String unscannedCount(int count) {
+    return '仍需扫描 $count 箱';
+  }
+
+  @override
+  String get viewUnscanned => '未扫描清单';
+
+  @override
+  String get allScanned => '当前目标阶段没有未扫描箱子。';
 
   @override
   String get unsupportedQr => '这不是本应用支持的箱子标签。可返回后手动搜索箱号。';
@@ -244,6 +443,24 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get moveStatus => '搬运状态';
+
+  @override
+  String get statusHistory => '状态历史';
+
+  @override
+  String get undoLastStatus => '撤销上次';
+
+  @override
+  String get noStatusHistory => '还没有状态变化记录。';
+
+  @override
+  String get statusUndoSuccess => '已撤销最后一次状态变化';
+
+  @override
+  String get statusSourceManual => '手动修改';
+
+  @override
+  String get statusSourceScanner => '现场扫码';
 
   @override
   String get issues => '异常标记';
@@ -275,6 +492,29 @@ class AppLocalizationsZh extends AppLocalizations {
   String get exportCsv => '导出项目 CSV';
 
   @override
+  String get projectReport => '项目收尾报告';
+
+  @override
+  String reportGeneratedAt(Object value) {
+    return '生成时间：$value';
+  }
+
+  @override
+  String get reportDamaged => '损坏箱';
+
+  @override
+  String get roomDistribution => '房间分布';
+
+  @override
+  String get reportNone => '无';
+
+  @override
+  String get unassignedRoom => '未指定房间';
+
+  @override
+  String get moreRooms => '其他房间';
+
+  @override
   String get backup => '分享本地备份';
 
   @override
@@ -287,10 +527,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get restoreSuccess => '备份恢复成功';
 
   @override
+  String restoreSuccessMissingPhotos(int count) {
+    return '备份恢复成功，$count 张照片在备份中缺失';
+  }
+
+  @override
   String get invalidBackup => '备份无效或版本不受支持，现有数据未被修改。';
 
   @override
   String get privacy => '隐私说明';
+
+  @override
+  String get localPrivacyFallback => '公开网页未配置，当前显示内置隐私说明';
 
   @override
   String get privacyBody =>
@@ -298,6 +546,20 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get about => '关于搬家箱';
+
+  @override
+  String get contactSupport => '联系支持';
+
+  @override
+  String get supportEmailSubject => '搬家箱 App 用户支持';
+
+  @override
+  String get supportNotConfigured => '支持邮箱尚未配置。发布构建需通过 SUPPORT_EMAIL 注入公开联系邮箱。';
+
+  @override
+  String versionBuild(Object version, Object build) {
+    return '版本 $version（$build）';
+  }
 
   @override
   String get aboutBody => '用于快速登记纸箱、离线搜索物品并追踪搬运状态。全部功能免费，无订阅、试用倒计时或付费墙。';
@@ -356,6 +618,21 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get projectDashboard => '项目总览';
+
+  @override
+  String get waitingToLoad => '待装车';
+
+  @override
+  String get notArrived => '未到达';
+
+  @override
+  String get notUnpacked => '未拆箱';
+
+  @override
+  String get stageFilterHint => '点击阶段可直接筛选；可同时选择多个阶段。';
+
+  @override
+  String get clearFilters => '清除筛选';
 
   @override
   String get boxes => '箱子';

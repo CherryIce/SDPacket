@@ -15,7 +15,10 @@ void main() {
   final AppLocalizations l10n = isChinese
       ? AppLocalizationsZh()
       : AppLocalizationsEn();
-  final store = AppStore(repository: FileAppRepository());
+  final store = AppStore(
+    repository: FileAppRepository(),
+    initialLanguageCode: isChinese ? 'zh' : 'en',
+  );
   store.initialize(
     SampleSeed(
       projectName: l10n.sampleProjectName,

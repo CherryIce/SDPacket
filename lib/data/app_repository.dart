@@ -5,19 +5,22 @@ import 'dart:typed_data';
 import 'package:path_provider/path_provider.dart';
 
 import '../models/box_record.dart';
+import '../models/entry_batch.dart';
 import '../models/moving_project.dart';
 
 class AppSnapshot {
   const AppSnapshot({
     required this.projects,
     required this.boxes,
+    this.entryBatches = const [],
     required this.hasSeededExample,
   });
 
-  static const int currentSchemaVersion = 1;
+  static const int currentSchemaVersion = 2;
 
   final List<MovingProject> projects;
   final List<BoxRecord> boxes;
+  final List<EntryBatch> entryBatches;
   final bool hasSeededExample;
 
   Map<String, Object?> toJson() => {
@@ -26,6 +29,7 @@ class AppSnapshot {
     'hasSeededExample': hasSeededExample,
     'projects': projects.map((project) => project.toJson()).toList(),
     'boxes': boxes.map((box) => box.toJson()).toList(),
+    'entryBatches': entryBatches.map((batch) => batch.toJson()).toList(),
   };
 
   Uint8List toBytes() => Uint8List.fromList(
@@ -39,7 +43,8 @@ class AppSnapshot {
   }
 
   factory AppSnapshot.fromJson(Map<String, Object?> json) {
-    if (json['schemaVersion'] != currentSchemaVersion) {
+    final schemaVersion = (json['schemaVersion'] as num?)?.toInt();
+    if (schemaVersion != 1 && schemaVersion != currentSchemaVersion) {
       throw const FormatException('Unsupported schema version');
     }
     final projects = _mapList(
@@ -48,19 +53,49 @@ class AppSnapshot {
     final boxes = _mapList(
       json['boxes'],
     ).map(BoxRecord.fromJson).toList(growable: false);
-    _validate(projects, boxes);
+    final entryBatches = schemaVersion == 1
+        ? <EntryBatch>[]
+        : _mapList(
+            json['entryBatches'],
+          ).map(EntryBatch.fromJson).toList(growable: false);
+    _validate(projects, boxes, entryBatches);
     return AppSnapshot(
       projects: projects,
       boxes: boxes,
+      entryBatches: entryBatches,
       hasSeededExample: json['hasSeededExample'] as bool? ?? true,
     );
   }
 
-  static void _validate(List<MovingProject> projects, List<BoxRecord> boxes) {
+  static void _validate(
+    List<MovingProject> projects,
+    List<BoxRecord> boxes,
+    List<EntryBatch> entryBatches,
+  ) {
     final projectIds = <String>{};
     for (final project in projects) {
       if (!projectIds.add(project.id) || project.nextSequence < 1) {
         throw const FormatException('Invalid project identity or sequence');
+      }
+    }
+    final batches = <String>{};
+    final batchedBoxIds = <String>{};
+    for (final batch in entryBatches) {
+      if (!batches.add(batch.id) ||
+          !projectIds.contains(batch.projectId) ||
+          batch.nextIndex < 0 ||
+          batch.nextIndex > batch.boxIds.length) {
+        throw const FormatException('Invalid entry batch');
+      }
+      final uniqueBoxes = <String>{};
+      for (final id in batch.boxIds) {
+        final box = boxes.where((candidate) => candidate.id == id).firstOrNull;
+        if (!uniqueBoxes.add(id) ||
+            !batchedBoxIds.add(id) ||
+            box == null ||
+            box.projectId != batch.projectId) {
+          throw const FormatException('Invalid entry batch box');
+        }
       }
     }
     final boxIds = <String>{};
@@ -81,10 +116,19 @@ abstract interface class AppRepository {
   Future<AppSnapshot?> load();
 
   Future<void> save(AppSnapshot snapshot);
+
+  Future<String?> loadLanguageCode();
+
+  Future<void> saveLanguageCode(String languageCode);
+
+  Future<bool> loadHasCompletedOnboarding();
+
+  Future<void> saveHasCompletedOnboarding(bool value);
 }
 
 class FileAppRepository implements AppRepository {
   File? _dataFile;
+  File? _preferencesFile;
 
   Future<File> _resolveDataFile() async {
     final cached = _dataFile;
@@ -93,6 +137,15 @@ class FileAppRepository implements AppRepository {
     final directory = Directory('${support.path}/moving_box');
     await directory.create(recursive: true);
     return _dataFile = File('${directory.path}/app_data.json');
+  }
+
+  Future<File> _resolvePreferencesFile() async {
+    final cached = _preferencesFile;
+    if (cached != null) return cached;
+    final support = await getApplicationSupportDirectory();
+    final directory = Directory('${support.path}/moving_box');
+    await directory.create(recursive: true);
+    return _preferencesFile = File('${directory.path}/preferences.json');
   }
 
   @override
@@ -117,12 +170,63 @@ class FileAppRepository implements AppRepository {
     if (await file.exists()) await file.copy(backup.path);
     await temporary.rename(file.path);
   }
+
+  @override
+  Future<String?> loadLanguageCode() async {
+    final languageCode = (await _readPreferences())['languageCode'];
+    return languageCode is String ? languageCode : null;
+  }
+
+  @override
+  Future<void> saveLanguageCode(String languageCode) async {
+    await _updatePreferences({'languageCode': languageCode});
+  }
+
+  @override
+  Future<bool> loadHasCompletedOnboarding() async =>
+      (await _readPreferences())['hasCompletedOnboarding'] == true;
+
+  @override
+  Future<void> saveHasCompletedOnboarding(bool value) async {
+    await _updatePreferences({'hasCompletedOnboarding': value});
+  }
+
+  Future<Map<String, Object?>> _readPreferences() async {
+    final file = await _resolvePreferencesFile();
+    if (!await file.exists()) return const {};
+    try {
+      final decoded = jsonDecode(await file.readAsString());
+      if (decoded is! Map) return const {};
+      return decoded.cast<String, Object?>();
+    } on FormatException {
+      return const {};
+    } on FileSystemException {
+      return const {};
+    }
+  }
+
+  Future<void> _updatePreferences(Map<String, Object?> values) async {
+    final file = await _resolvePreferencesFile();
+    final preferences = {...await _readPreferences(), ...values};
+    final temporary = File('${file.path}.tmp');
+    await temporary.writeAsString(jsonEncode(preferences), flush: true);
+    await temporary.rename(file.path);
+  }
 }
 
 class InMemoryAppRepository implements AppRepository {
-  InMemoryAppRepository([this.snapshot]);
+  InMemoryAppRepository([
+    this.snapshot,
+    this.languageCode,
+    this.hasCompletedOnboarding = false,
+  ]);
+
+  InMemoryAppRepository.onboarded([this.snapshot, this.languageCode])
+    : hasCompletedOnboarding = true;
 
   AppSnapshot? snapshot;
+  String? languageCode;
+  bool hasCompletedOnboarding;
 
   @override
   Future<AppSnapshot?> load() async => snapshot;
@@ -130,6 +234,22 @@ class InMemoryAppRepository implements AppRepository {
   @override
   Future<void> save(AppSnapshot snapshot) async {
     this.snapshot = AppSnapshot.fromBytes(snapshot.toBytes());
+  }
+
+  @override
+  Future<String?> loadLanguageCode() async => languageCode;
+
+  @override
+  Future<void> saveLanguageCode(String languageCode) async {
+    this.languageCode = languageCode;
+  }
+
+  @override
+  Future<bool> loadHasCompletedOnboarding() async => hasCompletedOnboarding;
+
+  @override
+  Future<void> saveHasCompletedOnboarding(bool value) async {
+    hasCompletedOnboarding = value;
   }
 }
 

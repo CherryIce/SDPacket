@@ -2,45 +2,27 @@ import 'package:flutter/material.dart';
 
 import '../app.dart';
 import '../models/box_record.dart';
+import 'ios_modal.dart';
 import 'localized_values.dart';
 
 Future<void> showPhysicalMarkReminder(
   BuildContext context,
   BoxRecord box,
 ) async {
-  final method = await showModalBottomSheet<PhysicalMarkMethod>(
+  final method = await showIosActionSheet<PhysicalMarkMethod>(
     context: context,
-    showDragHandle: true,
-    builder: (context) => SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              context.l10n.physicalMarkTitle,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(context.l10n.physicalMarkMessage(box.shortCode)),
-            const SizedBox(height: 18),
-            ...PhysicalMarkMethod.values.map(
-              (value) => ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(_methodIcon(value)),
-                title: Text(value.label(context)),
-                onTap: () => Navigator.pop(context, value),
-              ),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(context.l10n.later),
-            ),
-          ],
-        ),
-      ),
-    ),
+    title: context.l10n.physicalMarkTitle,
+    message: context.l10n.physicalMarkMessage(box.shortCode),
+    cancelLabel: context.l10n.later,
+    options: PhysicalMarkMethod.values
+        .map(
+          (value) => IosActionSheetOption(
+            label: value.label(context),
+            value: value,
+            icon: _methodIcon(value),
+          ),
+        )
+        .toList(growable: false),
   );
   if (method != null && context.mounted) {
     await StoreScope.of(context).confirmPhysicalMark(box.id, method);

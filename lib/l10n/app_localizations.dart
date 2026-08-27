@@ -146,6 +146,108 @@ abstract class AppLocalizations {
   /// **'设置'**
   String get settings;
 
+  /// No description provided for @moreActions.
+  ///
+  /// In zh, this message translates to:
+  /// **'更多操作'**
+  String get moreActions;
+
+  /// No description provided for @language.
+  ///
+  /// In zh, this message translates to:
+  /// **'语言'**
+  String get language;
+
+  /// No description provided for @chooseLanguage.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择语言'**
+  String get chooseLanguage;
+
+  /// No description provided for @simplifiedChinese.
+  ///
+  /// In zh, this message translates to:
+  /// **'简体中文'**
+  String get simplifiedChinese;
+
+  /// No description provided for @english.
+  ///
+  /// In zh, this message translates to:
+  /// **'English'**
+  String get english;
+
+  /// No description provided for @languageChangeFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'语言切换失败，请重试。'**
+  String get languageChangeFailed;
+
+  /// No description provided for @onboardingSkip.
+  ///
+  /// In zh, this message translates to:
+  /// **'跳过'**
+  String get onboardingSkip;
+
+  /// No description provided for @onboardingNext.
+  ///
+  /// In zh, this message translates to:
+  /// **'下一步'**
+  String get onboardingNext;
+
+  /// No description provided for @onboardingGetStarted.
+  ///
+  /// In zh, this message translates to:
+  /// **'开始使用'**
+  String get onboardingGetStarted;
+
+  /// No description provided for @onboardingQuickTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'十几秒登记一只箱子'**
+  String get onboardingQuickTitle;
+
+  /// No description provided for @onboardingQuickBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'拍张照片或补一句备注，箱子记录会立即保存在本机。'**
+  String get onboardingQuickBody;
+
+  /// No description provided for @onboardingFindTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'没网也能快速找到物品'**
+  String get onboardingFindTitle;
+
+  /// No description provided for @onboardingFindBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'离线搜索箱号、房间、备注和物品名称，搬家现场没有信号也不受影响。'**
+  String get onboardingFindBody;
+
+  /// No description provided for @onboardingTrackTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'每个搬运阶段都清清楚楚'**
+  String get onboardingTrackTitle;
+
+  /// No description provided for @onboardingTrackBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'追踪已打包、已装车、已到达和已拆箱状态，同时避免数字记录与现实箱体标签错位。'**
+  String get onboardingTrackBody;
+
+  /// No description provided for @onboardingProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'第 {current} 页，共 {total} 页'**
+  String onboardingProgress(int current, int total);
+
+  /// No description provided for @onboardingSavingFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法保存引导状态，请重试。'**
+  String get onboardingSavingFailed;
+
   /// No description provided for @noProjects.
   ///
   /// In zh, this message translates to:
@@ -278,6 +380,12 @@ abstract class AppLocalizations {
   /// **'拍照登记'**
   String get takePhoto;
 
+  /// No description provided for @continuousCamera.
+  ///
+  /// In zh, this message translates to:
+  /// **'连续拍照'**
+  String get continuousCamera;
+
   /// No description provided for @choosePhotos.
   ///
   /// In zh, this message translates to:
@@ -301,6 +409,90 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'每批最多选择 30 张照片。'**
   String get photoLimit;
+
+  /// No description provided for @batchCaptureCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'本批已拍 {count} 箱'**
+  String batchCaptureCount(int count);
+
+  /// No description provided for @batchCaptureHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'每拍一张就立即创建并保存箱子草稿。可以继续拍摄，完成后再逐箱编辑。'**
+  String get batchCaptureHint;
+
+  /// No description provided for @noBatchPhotos.
+  ///
+  /// In zh, this message translates to:
+  /// **'拍下第一只箱子，开始本批登记。'**
+  String get noBatchPhotos;
+
+  /// No description provided for @editBatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑本批'**
+  String get editBatch;
+
+  /// No description provided for @takeNextPhoto.
+  ///
+  /// In zh, this message translates to:
+  /// **'拍下一箱'**
+  String get takeNextPhoto;
+
+  /// No description provided for @batchProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'第 {current} / {total} 箱'**
+  String batchProgress(int current, int total);
+
+  /// No description provided for @applyToRemaining.
+  ///
+  /// In zh, this message translates to:
+  /// **'批量套用'**
+  String get applyToRemaining;
+
+  /// No description provided for @applyToRemainingHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'“批量套用”会把当前房间和标签应用到本箱及本批后续箱子。'**
+  String get applyToRemainingHint;
+
+  /// No description provided for @batchDetailsApplied.
+  ///
+  /// In zh, this message translates to:
+  /// **'房间和标签已应用到本批剩余箱子'**
+  String get batchDetailsApplied;
+
+  /// No description provided for @skip.
+  ///
+  /// In zh, this message translates to:
+  /// **'跳过'**
+  String get skip;
+
+  /// No description provided for @saveAndNext.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存并下一箱'**
+  String get saveAndNext;
+
+  /// No description provided for @finishBatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存并完成本批'**
+  String get finishBatch;
+
+  /// No description provided for @batchUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'这个登记批次已完成或不存在。'**
+  String get batchUnavailable;
+
+  /// No description provided for @resumeBatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'继续未完成批次'**
+  String get resumeBatch;
 
   /// No description provided for @batchCreated.
   ///
@@ -506,6 +698,114 @@ abstract class AppLocalizations {
   /// **'用逗号分隔物品名称（可选）'**
   String get itemsHint;
 
+  /// No description provided for @addItem.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加物品'**
+  String get addItem;
+
+  /// No description provided for @editItem.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑物品'**
+  String get editItem;
+
+  /// No description provided for @itemName.
+  ///
+  /// In zh, this message translates to:
+  /// **'物品名称'**
+  String get itemName;
+
+  /// No description provided for @itemNameRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入物品名称'**
+  String get itemNameRequired;
+
+  /// No description provided for @itemQuantity.
+  ///
+  /// In zh, this message translates to:
+  /// **'数量（可选）'**
+  String get itemQuantity;
+
+  /// No description provided for @itemQuantityInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入大于 0 的整数'**
+  String get itemQuantityInvalid;
+
+  /// No description provided for @itemQuantityValue.
+  ///
+  /// In zh, this message translates to:
+  /// **'数量 {quantity}'**
+  String itemQuantityValue(int quantity);
+
+  /// No description provided for @itemNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'物品备注（可选）'**
+  String get itemNote;
+
+  /// No description provided for @noStructuredItems.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未添加结构化物品。可继续只使用整段备注。'**
+  String get noStructuredItems;
+
+  /// No description provided for @quickTemplates.
+  ///
+  /// In zh, this message translates to:
+  /// **'快捷模板'**
+  String get quickTemplates;
+
+  /// No description provided for @templateKitchen.
+  ///
+  /// In zh, this message translates to:
+  /// **'厨房'**
+  String get templateKitchen;
+
+  /// No description provided for @templateBedroom.
+  ///
+  /// In zh, this message translates to:
+  /// **'卧室'**
+  String get templateBedroom;
+
+  /// No description provided for @templateOldHome.
+  ///
+  /// In zh, this message translates to:
+  /// **'旧家'**
+  String get templateOldHome;
+
+  /// No description provided for @templateNewHome.
+  ///
+  /// In zh, this message translates to:
+  /// **'新家'**
+  String get templateNewHome;
+
+  /// No description provided for @templateStorage.
+  ///
+  /// In zh, this message translates to:
+  /// **'储物间'**
+  String get templateStorage;
+
+  /// No description provided for @templateFragile.
+  ///
+  /// In zh, this message translates to:
+  /// **'易碎'**
+  String get templateFragile;
+
+  /// No description provided for @templateKeepDry.
+  ///
+  /// In zh, this message translates to:
+  /// **'怕潮'**
+  String get templateKeepDry;
+
+  /// No description provided for @templateUnpackFirst.
+  ///
+  /// In zh, this message translates to:
+  /// **'优先拆箱'**
+  String get templateUnpackFirst;
+
   /// No description provided for @duplicateCode.
   ///
   /// In zh, this message translates to:
@@ -530,11 +830,77 @@ abstract class AppLocalizations {
   /// **'二维码与打印'**
   String get qrAndPrint;
 
+  /// No description provided for @labelDocumentTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'搬家箱标签'**
+  String get labelDocumentTitle;
+
+  /// No description provided for @labelBrand.
+  ///
+  /// In zh, this message translates to:
+  /// **'搬家箱'**
+  String get labelBrand;
+
+  /// No description provided for @scanOrSearchCode.
+  ///
+  /// In zh, this message translates to:
+  /// **'扫码或搜索箱号'**
+  String get scanOrSearchCode;
+
   /// No description provided for @scan.
   ///
   /// In zh, this message translates to:
   /// **'扫描箱子标签'**
   String get scan;
+
+  /// No description provided for @movingScanMode.
+  ///
+  /// In zh, this message translates to:
+  /// **'搬家现场扫码'**
+  String get movingScanMode;
+
+  /// No description provided for @scanTargetStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'扫码后推进到'**
+  String get scanTargetStatus;
+
+  /// No description provided for @repeatedScan.
+  ///
+  /// In zh, this message translates to:
+  /// **'{code} 已扫描或当前已是“{status}”及之后状态'**
+  String repeatedScan(Object code, Object status);
+
+  /// No description provided for @scanUpdated.
+  ///
+  /// In zh, this message translates to:
+  /// **'{code} 已更新为“{status}”'**
+  String scanUpdated(Object code, Object status);
+
+  /// No description provided for @scannedCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'本次已扫描 {count} 箱'**
+  String scannedCount(int count);
+
+  /// No description provided for @unscannedCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'仍需扫描 {count} 箱'**
+  String unscannedCount(int count);
+
+  /// No description provided for @viewUnscanned.
+  ///
+  /// In zh, this message translates to:
+  /// **'未扫描清单'**
+  String get viewUnscanned;
+
+  /// No description provided for @allScanned.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前目标阶段没有未扫描箱子。'**
+  String get allScanned;
 
   /// No description provided for @unsupportedQr.
   ///
@@ -553,6 +919,42 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'搬运状态'**
   String get moveStatus;
+
+  /// No description provided for @statusHistory.
+  ///
+  /// In zh, this message translates to:
+  /// **'状态历史'**
+  String get statusHistory;
+
+  /// No description provided for @undoLastStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'撤销上次'**
+  String get undoLastStatus;
+
+  /// No description provided for @noStatusHistory.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有状态变化记录。'**
+  String get noStatusHistory;
+
+  /// No description provided for @statusUndoSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已撤销最后一次状态变化'**
+  String get statusUndoSuccess;
+
+  /// No description provided for @statusSourceManual.
+  ///
+  /// In zh, this message translates to:
+  /// **'手动修改'**
+  String get statusSourceManual;
+
+  /// No description provided for @statusSourceScanner.
+  ///
+  /// In zh, this message translates to:
+  /// **'现场扫码'**
+  String get statusSourceScanner;
 
   /// No description provided for @issues.
   ///
@@ -608,6 +1010,48 @@ abstract class AppLocalizations {
   /// **'导出项目 CSV'**
   String get exportCsv;
 
+  /// No description provided for @projectReport.
+  ///
+  /// In zh, this message translates to:
+  /// **'项目收尾报告'**
+  String get projectReport;
+
+  /// No description provided for @reportGeneratedAt.
+  ///
+  /// In zh, this message translates to:
+  /// **'生成时间：{value}'**
+  String reportGeneratedAt(Object value);
+
+  /// No description provided for @reportDamaged.
+  ///
+  /// In zh, this message translates to:
+  /// **'损坏箱'**
+  String get reportDamaged;
+
+  /// No description provided for @roomDistribution.
+  ///
+  /// In zh, this message translates to:
+  /// **'房间分布'**
+  String get roomDistribution;
+
+  /// No description provided for @reportNone.
+  ///
+  /// In zh, this message translates to:
+  /// **'无'**
+  String get reportNone;
+
+  /// No description provided for @unassignedRoom.
+  ///
+  /// In zh, this message translates to:
+  /// **'未指定房间'**
+  String get unassignedRoom;
+
+  /// No description provided for @moreRooms.
+  ///
+  /// In zh, this message translates to:
+  /// **'其他房间'**
+  String get moreRooms;
+
   /// No description provided for @backup.
   ///
   /// In zh, this message translates to:
@@ -632,6 +1076,12 @@ abstract class AppLocalizations {
   /// **'备份恢复成功'**
   String get restoreSuccess;
 
+  /// No description provided for @restoreSuccessMissingPhotos.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份恢复成功，{count} 张照片在备份中缺失'**
+  String restoreSuccessMissingPhotos(int count);
+
   /// No description provided for @invalidBackup.
   ///
   /// In zh, this message translates to:
@@ -644,6 +1094,12 @@ abstract class AppLocalizations {
   /// **'隐私说明'**
   String get privacy;
 
+  /// No description provided for @localPrivacyFallback.
+  ///
+  /// In zh, this message translates to:
+  /// **'公开网页未配置，当前显示内置隐私说明'**
+  String get localPrivacyFallback;
+
   /// No description provided for @privacyBody.
   ///
   /// In zh, this message translates to:
@@ -655,6 +1111,30 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'关于搬家箱'**
   String get about;
+
+  /// No description provided for @contactSupport.
+  ///
+  /// In zh, this message translates to:
+  /// **'联系支持'**
+  String get contactSupport;
+
+  /// No description provided for @supportEmailSubject.
+  ///
+  /// In zh, this message translates to:
+  /// **'搬家箱 App 用户支持'**
+  String get supportEmailSubject;
+
+  /// No description provided for @supportNotConfigured.
+  ///
+  /// In zh, this message translates to:
+  /// **'支持邮箱尚未配置。发布构建需通过 SUPPORT_EMAIL 注入公开联系邮箱。'**
+  String get supportNotConfigured;
+
+  /// No description provided for @versionBuild.
+  ///
+  /// In zh, this message translates to:
+  /// **'版本 {version}（{build}）'**
+  String versionBuild(Object version, Object build);
 
   /// No description provided for @aboutBody.
   ///
@@ -769,6 +1249,36 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'项目总览'**
   String get projectDashboard;
+
+  /// No description provided for @waitingToLoad.
+  ///
+  /// In zh, this message translates to:
+  /// **'待装车'**
+  String get waitingToLoad;
+
+  /// No description provided for @notArrived.
+  ///
+  /// In zh, this message translates to:
+  /// **'未到达'**
+  String get notArrived;
+
+  /// No description provided for @notUnpacked.
+  ///
+  /// In zh, this message translates to:
+  /// **'未拆箱'**
+  String get notUnpacked;
+
+  /// No description provided for @stageFilterHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击阶段可直接筛选；可同时选择多个阶段。'**
+  String get stageFilterHint;
+
+  /// No description provided for @clearFilters.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除筛选'**
+  String get clearFilters;
 
   /// No description provided for @boxes.
   ///

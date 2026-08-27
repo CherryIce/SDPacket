@@ -7,16 +7,20 @@ import 'package:share_plus/share_plus.dart';
 import '../app.dart';
 import '../data/app_store.dart';
 import '../models/box_record.dart';
+import '../models/entry_batch.dart';
 import '../models/moving_project.dart';
 import '../services/export_service.dart';
 import '../services/photo_storage.dart';
+import '../widgets/ios_modal.dart';
 import '../widgets/localized_values.dart';
 import '../widgets/physical_mark_dialog.dart';
 import '../widgets/project_form_dialog.dart';
+import 'batch_capture_screen.dart';
+import 'batch_editor_screen.dart';
 import 'box_editor_screen.dart';
+import 'moving_scan_screen.dart';
 import 'pending_marks_screen.dart';
 import 'qr_label_screen.dart';
-import 'scanner_screen.dart';
 import 'voice_entry_screen.dart';
 
 class ProjectDetailScreen extends StatefulWidget {
@@ -32,6 +36,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   final _query = TextEditingController();
   final _photos = PhotoStorage();
   final _exports = const ExportService();
+  final _stageFilters = <_StageFilter>{};
   bool _busy = false;
 
   @override
@@ -87,12 +92,39 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
 
   Future<void> _photoEntry({required bool camera}) async {
     final store = StoreScope.of(context);
+    final existingBatch = store.activeEntryBatchForProject(widget.projectId);
+    if (existingBatch != null) {
+      await _openBatchEditor(existingBatch.id);
+      return;
+    }
+    if (camera) {
+      final batch = await store.createEntryBatch(
+        projectId: widget.projectId,
+        source: EntryBatchSource.camera,
+      );
+      if (!mounted) return;
+      final result = await Navigator.push<BatchEditorResult>(
+        context,
+        MaterialPageRoute<BatchEditorResult>(
+          builder: (_) => BatchCaptureScreen(
+            projectId: widget.projectId,
+            batchId: batch.id,
+          ),
+        ),
+      );
+      if (mounted) await _handleBatchResult(result);
+      return;
+    }
     setState(() => _busy = true);
     final created = <BoxRecord>[];
+    late final EntryBatch batch;
     try {
-      final selected = camera
-          ? [if (await _photos.takePhoto() case final photo?) photo]
-          : await _photos.choosePhotos(limit: 30);
+      final selected = await _photos.choosePhotos(limit: 30);
+      if (selected.isEmpty) return;
+      batch = await store.createEntryBatch(
+        projectId: widget.projectId,
+        source: EntryBatchSource.gallery,
+      );
       for (final source in selected) {
         String? persistedPath;
         try {
@@ -100,6 +132,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
           final box = await store.createBox(
             projectId: widget.projectId,
             photoPaths: [persistedPath],
+            entryBatchId: batch.id,
           );
           created.add(box);
         } catch (_) {
@@ -116,54 +149,41 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
-    if (!mounted || created.isEmpty) return;
-    if (created.length == 1) {
-      await _openEditor(created.single.id);
-      if (!mounted) return;
-      final current = StoreScope.of(context).boxById(created.single.id);
-      if (current != null &&
-          current.physicalMarkStatus == PhysicalMarkStatus.pending) {
-        await showPhysicalMarkReminder(context, current);
-      }
+    if (!mounted) return;
+    if (created.isEmpty) {
+      await store.discardEmptyEntryBatch(batch.id);
       return;
     }
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(context.l10n.physicalMarkTitle),
-        content: Text(
-          '${context.l10n.batchCreated(created.length, created.first.shortCode, created.last.shortCode)}\n\n${context.l10n.physicalMarkBatchMessage(created.length)}',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text(context.l10n.later),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) =>
-                      PendingMarksScreen(projectId: widget.projectId),
-                ),
-              );
-            },
-            child: Text(context.l10n.viewPending),
-          ),
-        ],
+    await _openBatchEditor(batch.id);
+  }
+
+  Future<void> _openBatchEditor(String batchId) async {
+    final result = await Navigator.push<BatchEditorResult>(
+      context,
+      MaterialPageRoute<BatchEditorResult>(
+        builder: (_) => BatchEditorScreen(batchId: batchId),
+      ),
+    );
+    if (mounted) await _handleBatchResult(result);
+  }
+
+  Future<void> _handleBatchResult(BatchEditorResult? result) async {
+    if (result != BatchEditorResult.viewPending || !mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => PendingMarksScreen(projectId: widget.projectId),
       ),
     );
   }
 
   Future<void> _scan() async {
-    final id = await Navigator.push<String>(
+    await Navigator.push<void>(
       context,
-      MaterialPageRoute<String>(builder: (_) => const ScannerScreen()),
+      MaterialPageRoute<void>(
+        builder: (_) => MovingScanScreen(projectId: widget.projectId),
+      ),
     );
-    if (id != null && mounted) await _openEditor(id);
   }
 
   Future<void> _exportLabels() async {
@@ -175,6 +195,11 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       final bytes = await _exports.buildLabelPdf(
         store.projectById(widget.projectId),
         boxes,
+        BoxLabelPdfLabels(
+          documentTitle: context.l10n.labelDocumentTitle,
+          brand: context.l10n.labelBrand,
+          scanOrSearchCode: context.l10n.scanOrSearchCode,
+        ),
       );
       final shared = await Printing.sharePdf(
         bytes: bytes,
@@ -210,6 +235,44 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     );
   }
 
+  Future<void> _exportReport(MovingProject project) async {
+    final material = MaterialLocalizations.of(context);
+    final now = DateTime.now();
+    final generatedAt =
+        '${material.formatFullDate(now)} ${material.formatTimeOfDay(TimeOfDay.fromDateTime(now))}';
+    setState(() => _busy = true);
+    try {
+      final bytes = await _exports.buildProjectReportPdf(
+        project: project,
+        boxes: StoreScope.of(context).boxesForProject(project.id),
+        labels: ProjectReportLabels(
+          title: context.l10n.projectReport,
+          generatedAt: context.l10n.reportGeneratedAt(generatedAt),
+          total: context.l10n.total,
+          suspectedMissing: context.l10n.suspectedMissing,
+          damaged: context.l10n.reportDamaged,
+          notUnpacked: context.l10n.notUnpacked,
+          roomDistribution: context.l10n.roomDistribution,
+          none: context.l10n.reportNone,
+          unassignedRoom: context.l10n.unassignedRoom,
+          moreRooms: context.l10n.moreRooms,
+        ),
+      );
+      await Printing.sharePdf(
+        bytes: bytes,
+        filename: '${project.boxPrefix}-project-report.pdf',
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.exportFailed)));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _projectAction(
     _ProjectAction action,
     MovingProject project,
@@ -220,28 +283,21 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         await showProjectFormDialog(context, project: project);
       case _ProjectAction.csv:
         await _exportCsv(project);
+      case _ProjectAction.report:
+        await _exportReport(project);
       case _ProjectAction.archive:
         await store.setProjectArchived(project.id, true);
         if (mounted) Navigator.pop(context);
       case _ProjectAction.delete:
-        final confirmed = await showDialog<bool>(
+        final confirmed = await showIosConfirmation(
           context: context,
-          builder: (context) => AlertDialog(
-            title: Text(context.l10n.delete),
-            content: Text(context.l10n.deleteProjectConfirm),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: Text(context.l10n.cancel),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: Text(context.l10n.delete),
-              ),
-            ],
-          ),
+          title: context.l10n.delete,
+          message: context.l10n.deleteProjectConfirm,
+          cancelLabel: context.l10n.cancel,
+          confirmLabel: context.l10n.delete,
+          isDestructive: true,
         );
-        if (confirmed != true || !mounted) return;
+        if (!confirmed || !mounted) return;
         final paths = store
             .boxesForProject(project.id)
             .expand((box) => box.photoPaths)
@@ -254,41 +310,68 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     }
   }
 
+  Future<void> _showProjectActions(MovingProject project) async {
+    final action = await showIosActionSheet<_ProjectAction>(
+      context: context,
+      cancelLabel: context.l10n.cancel,
+      options: [
+        IosActionSheetOption(
+          label: context.l10n.editProject,
+          value: _ProjectAction.edit,
+          icon: Icons.edit_outlined,
+        ),
+        IosActionSheetOption(
+          label: context.l10n.exportCsv,
+          value: _ProjectAction.csv,
+          icon: Icons.table_view_outlined,
+        ),
+        IosActionSheetOption(
+          label: context.l10n.projectReport,
+          value: _ProjectAction.report,
+          icon: Icons.picture_as_pdf_outlined,
+        ),
+        IosActionSheetOption(
+          label: context.l10n.archive,
+          value: _ProjectAction.archive,
+          icon: Icons.archive_outlined,
+        ),
+        IosActionSheetOption(
+          label: context.l10n.delete,
+          value: _ProjectAction.delete,
+          icon: Icons.delete_outline,
+          isDestructive: true,
+        ),
+      ],
+    );
+    if (action != null && mounted) await _projectAction(action, project);
+  }
+
   @override
   Widget build(BuildContext context) {
     final store = StoreScope.of(context);
     final project = store.projectById(widget.projectId);
-    final boxes = store.boxesForProject(widget.projectId, query: _query.text);
+    final allMatchingBoxes = store.boxesForProject(
+      widget.projectId,
+      query: _query.text,
+    );
+    final boxes = _stageFilters.isEmpty
+        ? allMatchingBoxes
+        : allMatchingBoxes.where(_matchesSelectedStage).toList();
     final stats = store.statsFor(widget.projectId);
+    final activeBatch = store.activeEntryBatchForProject(widget.projectId);
     return Scaffold(
       appBar: AppBar(
         title: Text(project.name),
         actions: [
           IconButton(
-            tooltip: context.l10n.scan,
+            tooltip: context.l10n.movingScanMode,
             onPressed: _scan,
             icon: const Icon(Icons.qr_code_scanner),
           ),
-          PopupMenuButton<_ProjectAction>(
-            onSelected: (action) => _projectAction(action, project),
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: _ProjectAction.edit,
-                child: Text(context.l10n.editProject),
-              ),
-              PopupMenuItem(
-                value: _ProjectAction.csv,
-                child: Text(context.l10n.exportCsv),
-              ),
-              PopupMenuItem(
-                value: _ProjectAction.archive,
-                child: Text(context.l10n.archive),
-              ),
-              PopupMenuItem(
-                value: _ProjectAction.delete,
-                child: Text(context.l10n.delete),
-              ),
-            ],
+          IconButton(
+            tooltip: context.l10n.moreActions,
+            onPressed: _busy ? null : () => _showProjectActions(project),
+            icon: const Icon(Icons.more_horiz),
           ),
         ],
       ),
@@ -297,7 +380,34 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
           children: [
-            _ProgressCard(stats: stats),
+            _ProgressCard(
+              stats: stats,
+              selected: _stageFilters,
+              onToggle: (filter) => setState(() {
+                _stageFilters.contains(filter)
+                    ? _stageFilters.remove(filter)
+                    : _stageFilters.add(filter);
+              }),
+              onClear: () => setState(_stageFilters.clear),
+            ),
+            if (activeBatch != null) ...[
+              const SizedBox(height: 12),
+              Card(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                child: ListTile(
+                  leading: const Icon(Icons.pending_actions_outlined),
+                  title: Text(context.l10n.resumeBatch),
+                  subtitle: Text(
+                    context.l10n.batchProgress(
+                      activeBatch.safeNextIndex + 1,
+                      activeBatch.boxIds.length,
+                    ),
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _openBatchEditor(activeBatch.id),
+                ),
+              ),
+            ],
             if (stats.pendingMarks > 0) ...[
               const SizedBox(height: 12),
               Card(
@@ -392,20 +502,56 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   }
 }
 
+bool _matchesStage(BoxRecord box, _StageFilter filter) => switch (filter) {
+  _StageFilter.waitingToLoad => box.moveStatus.index < MoveStatus.loaded.index,
+  _StageFilter.notArrived => box.moveStatus.index < MoveStatus.arrived.index,
+  _StageFilter.notUnpacked => box.moveStatus.index < MoveStatus.unpacked.index,
+  _StageFilter.suspectedMissing => box.issues.contains(
+    BoxIssue.suspectedMissing,
+  ),
+};
+
+extension on _ProjectDetailScreenState {
+  bool _matchesSelectedStage(BoxRecord box) =>
+      _stageFilters.any((filter) => _matchesStage(box, filter));
+}
+
 class _ProgressCard extends StatelessWidget {
-  const _ProgressCard({required this.stats});
+  const _ProgressCard({
+    required this.stats,
+    required this.selected,
+    required this.onToggle,
+    required this.onClear,
+  });
 
   final ProjectStats stats;
+  final Set<_StageFilter> selected;
+  final ValueChanged<_StageFilter> onToggle;
+  final VoidCallback onClear;
 
   @override
   Widget build(BuildContext context) {
-    final metrics = [
-      (context.l10n.total, stats.total, Icons.inventory_2_outlined),
-      (context.l10n.packed, stats.packed, Icons.check_box_outlined),
-      (context.l10n.loaded, stats.loaded, Icons.local_shipping_outlined),
-      (context.l10n.arrived, stats.arrived, Icons.location_on_outlined),
-      (context.l10n.unpacked, stats.unpacked, Icons.unarchive_outlined),
+    final metrics = <(_StageFilter, String, int, IconData)>[
       (
+        _StageFilter.waitingToLoad,
+        context.l10n.waitingToLoad,
+        stats.waitingToLoad,
+        Icons.inventory_2_outlined,
+      ),
+      (
+        _StageFilter.notArrived,
+        context.l10n.notArrived,
+        stats.notArrived,
+        Icons.local_shipping_outlined,
+      ),
+      (
+        _StageFilter.notUnpacked,
+        context.l10n.notUnpacked,
+        stats.notUnpacked,
+        Icons.unarchive_outlined,
+      ),
+      (
+        _StageFilter.suspectedMissing,
         context.l10n.suspectedMissing,
         stats.suspectedMissing,
         Icons.warning_amber,
@@ -417,38 +563,45 @@ class _ProgressCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              context.l10n.progress,
-              style: Theme.of(context).textTheme.titleLarge,
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    context.l10n.progress,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+                Text(context.l10n.boxCount(stats.total)),
+              ],
             ),
+            const SizedBox(height: 4),
+            Text(context.l10n.stageFilterHint),
             const SizedBox(height: 14),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: metrics
                   .map(
-                    (metric) => SizedBox(
-                      width: (MediaQuery.sizeOf(context).width - 64) / 3,
-                      child: Column(
-                        children: [
-                          Icon(metric.$3, size: 20),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${metric.$2}',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          Text(
-                            metric.$1,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
+                    (metric) => FilterChip(
+                      selected: selected.contains(metric.$1),
+                      avatar: Icon(metric.$4, size: 18),
+                      label: Text('${metric.$2} ${metric.$3}'),
+                      onSelected: (_) => onToggle(metric.$1),
                     ),
                   )
                   .toList(),
             ),
+            if (selected.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: onClear,
+                  icon: const Icon(Icons.filter_alt_off_outlined),
+                  label: Text(context.l10n.clearFilters),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -474,27 +627,37 @@ class _QuickEntryGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final entries = [
-      (context.l10n.takePhoto, Icons.camera_alt_outlined, onCamera),
+      (context.l10n.continuousCamera, Icons.camera_alt_outlined, onCamera),
       (context.l10n.choosePhotos, Icons.photo_library_outlined, onGallery),
       (context.l10n.voiceEntry, Icons.mic_none, onVoice),
       (context.l10n.manualEntry, Icons.edit_note, onManual),
     ];
-    return GridView.count(
-      crossAxisCount: 2,
+    final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+    final entryHeight = (64 + (textScale - 1).clamp(0, 1) * 32).toDouble();
+    return GridView.builder(
+      itemCount: entries.length,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 2.45,
-      mainAxisSpacing: 10,
-      crossAxisSpacing: 10,
-      children: entries
-          .map(
-            (entry) => FilledButton.tonalIcon(
-              onPressed: busy ? null : entry.$3,
-              icon: Icon(entry.$2),
-              label: Text(entry.$1, textAlign: TextAlign.center),
-            ),
-          )
-          .toList(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisExtent: entryHeight,
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+      ),
+      itemBuilder: (context, index) {
+        final entry = entries[index];
+        return FilledButton.tonal(
+          onPressed: busy ? null : entry.$3,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(entry.$2),
+              const SizedBox(width: 8),
+              Flexible(child: Text(entry.$1, textAlign: TextAlign.center)),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -610,4 +773,6 @@ class _StatusBadge extends StatelessWidget {
   }
 }
 
-enum _ProjectAction { edit, csv, archive, delete }
+enum _ProjectAction { edit, csv, report, archive, delete }
+
+enum _StageFilter { waitingToLoad, notArrived, notUnpacked, suspectedMissing }

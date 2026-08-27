@@ -67,9 +67,15 @@ class _QrLabelScreenState extends State<QrLabelScreen> {
 
   Future<Uint8List> _pdf(BoxRecord box) {
     final store = StoreScope.of(context);
-    return _exportService.buildLabelPdf(store.projectById(box.projectId), [
-      box,
-    ]);
+    return _exportService.buildLabelPdf(
+      store.projectById(box.projectId),
+      [box],
+      BoxLabelPdfLabels(
+        documentTitle: context.l10n.labelDocumentTitle,
+        brand: context.l10n.labelBrand,
+        scanOrSearchCode: context.l10n.scanOrSearchCode,
+      ),
+    );
   }
 
   @override
