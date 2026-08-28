@@ -122,6 +122,12 @@ abstract class AppLocalizations {
   /// **'搬家项目'**
   String get projects;
 
+  /// No description provided for @activeProjects.
+  ///
+  /// In zh, this message translates to:
+  /// **'进行中'**
+  String get activeProjects;
+
   /// No description provided for @newProject.
   ///
   /// In zh, this message translates to:
@@ -649,6 +655,24 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'箱号'**
   String get boxCode;
+
+  /// No description provided for @boxInformation.
+  ///
+  /// In zh, this message translates to:
+  /// **'箱子信息'**
+  String get boxInformation;
+
+  /// No description provided for @contentsAndNotes.
+  ///
+  /// In zh, this message translates to:
+  /// **'内容与备注'**
+  String get contentsAndNotes;
+
+  /// No description provided for @movingAndFlags.
+  ///
+  /// In zh, this message translates to:
+  /// **'搬运与标记'**
+  String get movingAndFlags;
 
   /// No description provided for @boxTitle.
   ///

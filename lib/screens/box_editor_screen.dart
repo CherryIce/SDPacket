@@ -14,9 +14,17 @@ import '../widgets/physical_mark_dialog.dart';
 import 'qr_label_screen.dart';
 
 class BoxEditorScreen extends StatefulWidget {
-  const BoxEditorScreen({super.key, required this.boxId});
+  const BoxEditorScreen({Key? key, required String boxId})
+    : this._(key: key, boxId: boxId);
 
-  final String boxId;
+  const BoxEditorScreen.create({Key? key, required String projectId})
+    : this._(key: key, projectId: projectId);
+
+  const BoxEditorScreen._({super.key, this.boxId, this.projectId})
+    : assert((boxId == null) != (projectId == null));
+
+  final String? boxId;
+  final String? projectId;
 
   @override
   State<BoxEditorScreen> createState() => _BoxEditorScreenState();
@@ -44,9 +52,21 @@ class _BoxEditorScreenState extends State<BoxEditorScreen> {
 
   bool _initialized = false;
 
+  bool get _isNew => widget.boxId == null;
+
   void _initializeIfNeeded() {
     if (_initialized) return;
-    final record = StoreScope.of(context).boxById(widget.boxId);
+    final store = StoreScope.of(context);
+    final now = DateTime.now();
+    final record = _isNew
+        ? BoxRecord(
+            id: '',
+            projectId: widget.projectId!,
+            shortCode: store.nextCode(widget.projectId!),
+            createdAt: now,
+            updatedAt: now,
+          )
+        : store.boxById(widget.boxId!);
     if (record == null) throw StateError('Box not found');
     _box = record;
     _code = TextEditingController(text: record.shortCode);
@@ -85,17 +105,32 @@ class _BoxEditorScreenState extends State<BoxEditorScreen> {
       .split(RegExp(r'[,，]'))
       .map((value) => value.trim())
       .where((value) => value.isNotEmpty)
-      .toList(growable: false);
+      .toList();
 
-  void _appendTag(String tag) {
+  void _toggleTag(String tag) {
     final tags = _split(_tags.text);
-    if (tags.any((value) => value.toLowerCase() == tag.toLowerCase())) return;
-    tags.add(tag);
-    _tags.text = tags.join(', ');
+    final index = tags.indexWhere(
+      (value) => value.toLowerCase() == tag.toLowerCase(),
+    );
+    if (index < 0) {
+      tags.add(tag);
+    } else {
+      tags.removeAt(index);
+    }
+    _setControllerText(_tags, tags.join(', '));
+  }
+
+  void _setControllerText(TextEditingController controller, String value) {
+    setState(() {
+      controller.value = TextEditingValue(
+        text: value,
+        selection: TextSelection.collapsed(offset: value.length),
+      );
+    });
   }
 
   Future<void> _editItem([BoxItem? existing]) async {
-    final result = await showIosFormDialog<BoxItem>(
+    final result = await showIosFormSheet<BoxItem>(
       context: context,
       builder: (_) => _ItemEditorDialog(existing: existing),
     );
@@ -129,29 +164,47 @@ class _BoxEditorScreenState extends State<BoxEditorScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     final store = StoreScope.of(context);
-    final current = store.boxById(_box.id) ?? _box;
-    final updated = current.copyWith(
-      shortCode: _code.text,
-      title: _title.text,
-      destinationRoom: _room.text,
-      currentLocation: _location.text,
-      memo: _memo.text,
-      tags: _split(_tags.text),
-      items: _items,
-      photoPaths: _photoPaths,
-      isPriority: _priority,
-      moveStatus: _status,
-      issues: _issues,
-    );
     try {
-      await store.updateBox(updated);
+      if (_isNew) {
+        _box = await store.createBox(
+          projectId: _box.projectId,
+          shortCode: _code.text,
+          title: _title.text,
+          destinationRoom: _room.text,
+          currentLocation: _location.text,
+          memo: _memo.text,
+          tags: _split(_tags.text),
+          items: _items,
+          photoPaths: _photoPaths,
+          isPriority: _priority,
+          moveStatus: _status,
+          issues: _issues,
+        );
+      } else {
+        final current = store.boxById(_box.id) ?? _box;
+        final updated = current.copyWith(
+          shortCode: _code.text,
+          title: _title.text,
+          destinationRoom: _room.text,
+          currentLocation: _location.text,
+          memo: _memo.text,
+          tags: _split(_tags.text),
+          items: _items,
+          photoPaths: _photoPaths,
+          isPriority: _priority,
+          moveStatus: _status,
+          issues: _issues,
+        );
+        await store.updateBox(updated);
+        _box = store.boxById(_box.id) ?? updated;
+      }
       for (final path in _removedPhotoPaths) {
         await _photoStorage.deleteIfManaged(path);
       }
       _saved = true;
       _newPhotoPaths.clear();
       _removedPhotoPaths.clear();
-      if (mounted) Navigator.pop(context, true);
+      if (mounted) Navigator.pop(context, _box.id);
     } on DuplicateBoxCodeException {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -171,12 +224,10 @@ class _BoxEditorScreenState extends State<BoxEditorScreen> {
         IosActionSheetOption(
           label: context.l10n.camera,
           value: _PhotoSource.camera,
-          icon: Icons.camera_alt_outlined,
         ),
         IosActionSheetOption(
           label: context.l10n.gallery,
           value: _PhotoSource.gallery,
-          icon: Icons.photo_library_outlined,
         ),
       ],
     );
@@ -216,7 +267,7 @@ class _BoxEditorScreenState extends State<BoxEditorScreen> {
       await _photoStorage.deleteIfManaged(path);
     }
     _saved = true;
-    if (mounted) Navigator.pop(context, true);
+    if (mounted) Navigator.pop(context);
   }
 
   @override
@@ -242,146 +293,182 @@ class _BoxEditorScreenState extends State<BoxEditorScreen> {
     ]);
     return Scaffold(
       appBar: AppBar(
-        title: Text(_box.shortCode),
+        title: Text(_isNew ? context.l10n.manualEntry : _box.shortCode),
         actions: [
-          IconButton(
-            tooltip: context.l10n.delete,
-            onPressed: _saving ? null : _delete,
-            icon: const Icon(Icons.delete_outline),
-          ),
+          if (!_isNew)
+            IconButton(
+              tooltip: context.l10n.delete,
+              onPressed: _saving ? null : _delete,
+              icon: const Icon(Icons.delete_outline),
+            ),
         ],
       ),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+          key: const Key('box-editor-scroll'),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
           children: [
-            if (_photoPaths.isNotEmpty)
-              SizedBox(
-                height: 150,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _photoPaths.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 10),
-                  itemBuilder: (context, index) => Stack(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Image.file(
-                          File(_photoPaths[index]),
-                          width: 150,
-                          height: 150,
-                          fit: BoxFit.cover,
+            _EditorSection(
+              key: const Key('box-editor-information-section'),
+              icon: Icons.inventory_2_outlined,
+              title: context.l10n.boxInformation,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_photoPaths.isNotEmpty) ...[
+                    SizedBox(
+                      height: 132,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _photoPaths.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 10),
+                        itemBuilder: (context, index) => Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: Image.file(
+                                File(_photoPaths[index]),
+                                width: 132,
+                                height: 132,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            Positioned(
+                              right: 4,
+                              top: 4,
+                              child: IconButton.filledTonal(
+                                tooltip: context.l10n.removePhoto,
+                                onPressed: () {
+                                  final path = _photoPaths[index];
+                                  setState(() => _photoPaths.removeAt(index));
+                                  if (_newPhotoPaths.remove(path)) {
+                                    unawaited(
+                                      _photoStorage.deleteIfManaged(path),
+                                    );
+                                  } else {
+                                    _removedPhotoPaths.add(path);
+                                  }
+                                },
+                                icon: const Icon(Icons.close, size: 18),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      Positioned(
-                        right: 4,
-                        top: 4,
-                        child: IconButton.filledTonal(
-                          tooltip: context.l10n.removePhoto,
-                          onPressed: () {
-                            final path = _photoPaths[index];
-                            setState(() => _photoPaths.removeAt(index));
-                            if (_newPhotoPaths.remove(path)) {
-                              unawaited(_photoStorage.deleteIfManaged(path));
-                            } else {
-                              _removedPhotoPaths.add(path);
-                            }
-                          },
-                          icon: const Icon(Icons.close, size: 18),
-                        ),
-                      ),
-                    ],
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  OutlinedButton.icon(
+                    onPressed: _addPhoto,
+                    icon: const Icon(Icons.add_a_photo_outlined),
+                    label: Text(context.l10n.addPhoto),
                   ),
-                ),
-              ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _addPhoto,
-              icon: const Icon(Icons.add_a_photo_outlined),
-              label: Text(context.l10n.addPhoto),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _code,
-              textCapitalization: TextCapitalization.characters,
-              decoration: InputDecoration(labelText: context.l10n.boxCode),
-              validator: (value) {
-                final code = (value ?? '').trim();
-                if (code.isEmpty) return '';
-                return StoreScope.of(context).isCodeAvailable(
-                      _box.projectId,
-                      code,
-                      excludingId: _box.id,
-                    )
-                    ? null
-                    : context.l10n.duplicateCode;
-              },
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _title,
-              decoration: InputDecoration(labelText: context.l10n.boxTitle),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _room,
-              decoration: InputDecoration(
-                labelText: context.l10n.destinationRoom,
-              ),
-            ),
-            _SuggestionChips(
-              values: roomSuggestions,
-              onSelected: (value) => _room.text = value,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _location,
-              decoration: InputDecoration(
-                labelText: context.l10n.currentLocation,
-              ),
-            ),
-            _SuggestionChips(
-              values: locationSuggestions,
-              onSelected: (value) => _location.text = value,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _memo,
-              minLines: 3,
-              maxLines: 7,
-              decoration: InputDecoration(labelText: context.l10n.memo),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _tags,
-              decoration: InputDecoration(
-                labelText: context.l10n.tags,
-                hintText: context.l10n.tagsHint,
-              ),
-            ),
-            _SuggestionChips(values: tagSuggestions, onSelected: _appendTag),
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    context.l10n.items,
-                    style: Theme.of(context).textTheme.titleMedium,
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    key: const Key('box-editor-code'),
+                    controller: _code,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.boxCode,
+                    ),
+                    validator: (value) {
+                      final code = (value ?? '').trim();
+                      if (code.isEmpty) return '';
+                      return StoreScope.of(context).isCodeAvailable(
+                            _box.projectId,
+                            code,
+                            excludingId: _isNew ? null : _box.id,
+                          )
+                          ? null
+                          : context.l10n.duplicateCode;
+                    },
                   ),
-                ),
-                TextButton.icon(
-                  onPressed: () => _editItem(),
-                  icon: const Icon(Icons.add),
-                  label: Text(context.l10n.addItem),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _title,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.boxTitle,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _room,
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      labelText: context.l10n.destinationRoom,
+                    ),
+                  ),
+                  _SuggestionChips(
+                    values: roomSuggestions,
+                    selectedValues: [_room.text],
+                    onSelected: (value) => _setControllerText(_room, value),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _location,
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      labelText: context.l10n.currentLocation,
+                    ),
+                  ),
+                  _SuggestionChips(
+                    values: locationSuggestions,
+                    selectedValues: [_location.text],
+                    onSelected: (value) => _setControllerText(_location, value),
+                  ),
+                ],
+              ),
             ),
-            Card(
+            const SizedBox(height: 14),
+            _EditorSection(
+              key: const Key('box-editor-contents-section'),
+              icon: Icons.notes_outlined,
+              title: context.l10n.contentsAndNotes,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: _memo,
+                    minLines: 3,
+                    maxLines: 7,
+                    decoration: InputDecoration(labelText: context.l10n.memo),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    key: const Key('box-editor-tags'),
+                    controller: _tags,
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      labelText: context.l10n.tags,
+                      hintText: context.l10n.tagsHint,
+                    ),
+                  ),
+                  _SuggestionChips(
+                    values: tagSuggestions,
+                    selectedValues: _split(_tags.text),
+                    onSelected: _toggleTag,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            _EditorSection(
+              key: const Key('box-editor-items-section'),
+              icon: Icons.category_outlined,
+              title: context.l10n.items,
+              trailing: TextButton.icon(
+                onPressed: () => _editItem(),
+                icon: const Icon(Icons.add),
+                label: Text(context.l10n.addItem),
+              ),
               child: _items.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Text(context.l10n.noStructuredItems),
+                  ? Text(
+                      context.l10n.noStructuredItems,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     )
                   : Column(
                       children: _items.indexed.map((indexed) {
@@ -395,6 +482,7 @@ class _BoxEditorScreenState extends State<BoxEditorScreen> {
                         return Column(
                           children: [
                             CheckboxListTile(
+                              contentPadding: EdgeInsets.zero,
                               value: item.isUnpacked,
                               controlAffinity: ListTileControlAffinity.leading,
                               title: Text(item.name),
@@ -428,101 +516,188 @@ class _BoxEditorScreenState extends State<BoxEditorScreen> {
                       }).toList(),
                     ),
             ),
-            const SizedBox(height: 18),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(context.l10n.priority),
-              value: _priority,
-              onChanged: (value) => setState(() => _priority = value),
-            ),
-            const SizedBox(height: 8),
-            IosSelectionField<MoveStatus>(
-              key: ValueKey(_status),
-              label: context.l10n.moveStatus,
-              value: _status,
-              valueLabel: _status.label(context),
-              cancelLabel: context.l10n.cancel,
-              options: MoveStatus.values
-                  .map(
-                    (status) => IosActionSheetOption(
-                      label: status.label(context),
-                      value: status,
-                    ),
-                  )
-                  .toList(),
-              onSelected: (value) => setState(() => _status = value),
-            ),
-            const SizedBox(height: 12),
-            _StatusHistoryCard(box: _box, onUndo: _undoLastStatus),
-            const SizedBox(height: 18),
-            Text(
-              context.l10n.issues,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: BoxIssue.values
-                  .map(
-                    (issue) => FilterChip(
-                      selected: _issues.contains(issue),
-                      label: Text(issue.label(context)),
-                      onSelected: (selected) => setState(() {
-                        selected ? _issues.add(issue) : _issues.remove(issue);
-                      }),
-                    ),
-                  )
-                  .toList(),
-            ),
-            const SizedBox(height: 20),
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.label_outline),
-                title: Text(context.l10n.physicalMark),
-                subtitle: Text(
-                  _box.physicalMarkStatus == PhysicalMarkStatus.pending
-                      ? context.l10n.pendingPhysicalMark
-                      : (_box.physicalMarkMethod?.label(context) ??
-                            context.l10n.marked),
-                ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () async {
-                  await showPhysicalMarkReminder(context, _box);
-                  if (mounted) {
-                    setState(() {
-                      _box = StoreScope.of(context).boxById(_box.id) ?? _box;
-                    });
-                  }
-                },
-              ),
-            ),
-            const SizedBox(height: 10),
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.qr_code_2),
-                title: Text(context.l10n.qrAndPrint),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (_) => QrLabelScreen(boxId: _box.id),
+            const SizedBox(height: 14),
+            _EditorSection(
+              key: const Key('box-editor-moving-section'),
+              icon: Icons.local_shipping_outlined,
+              title: context.l10n.movingAndFlags,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(context.l10n.priority),
+                    value: _priority,
+                    onChanged: (value) => setState(() => _priority = value),
                   ),
-                ),
+                  const SizedBox(height: 4),
+                  IosSelectionField<MoveStatus>(
+                    key: ValueKey(_status),
+                    label: context.l10n.moveStatus,
+                    value: _status,
+                    valueLabel: _status.label(context),
+                    cancelLabel: context.l10n.cancel,
+                    options: MoveStatus.values
+                        .map(
+                          (status) => IosActionSheetOption(
+                            label: status.label(context),
+                            value: status,
+                          ),
+                        )
+                        .toList(),
+                    onSelected: (value) => setState(() => _status = value),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    context.l10n.issues,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: BoxIssue.values
+                        .map(
+                          (issue) => FilterChip(
+                            selected: _issues.contains(issue),
+                            label: Text(issue.label(context)),
+                            onSelected: (selected) => setState(() {
+                              selected
+                                  ? _issues.add(issue)
+                                  : _issues.remove(issue);
+                            }),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ],
               ),
             ),
+            if (!_isNew) ...[
+              const SizedBox(height: 14),
+              _StatusHistoryCard(box: _box, onUndo: _undoLastStatus),
+              const SizedBox(height: 14),
+              _EditorSection(
+                key: const Key('box-editor-mark-section'),
+                icon: Icons.label_outline,
+                title: context.l10n.physicalMark,
+                child: Column(
+                  children: [
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.label_outline),
+                      title: Text(context.l10n.physicalMark),
+                      subtitle: Text(
+                        _box.physicalMarkStatus == PhysicalMarkStatus.pending
+                            ? context.l10n.pendingPhysicalMark
+                            : (_box.physicalMarkMethod?.label(context) ??
+                                  context.l10n.marked),
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () async {
+                        await showPhysicalMarkReminder(context, _box);
+                        if (mounted) {
+                          setState(() {
+                            _box =
+                                StoreScope.of(context).boxById(_box.id) ?? _box;
+                          });
+                        }
+                      },
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.qr_code_2),
+                      title: Text(context.l10n.qrAndPrint),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => QrLabelScreen(boxId: _box.id),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
-      bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.all(16),
-        child: FilledButton(
-          onPressed: _saving ? null : _save,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: _saving
-                ? const CircularProgressIndicator(strokeWidth: 2)
-                : Text(context.l10n.save),
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          border: Border(
+            top: BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
           ),
+        ),
+        child: SafeArea(
+          minimum: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: FilledButton(
+            key: const Key('box-editor-save'),
+            onPressed: _saving ? null : _save,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: _saving
+                  ? const SizedBox.square(
+                      dimension: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(context.l10n.save),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EditorSection extends StatelessWidget {
+  const _EditorSection({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.child,
+    this.trailing,
+  });
+
+  final IconData icon;
+  final String title;
+  final Widget child;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 20, color: colors.primary),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Text(title, style: theme.textTheme.titleMedium),
+                ),
+                if (trailing != null) trailing!,
+              ],
+            ),
+            const SizedBox(height: 14),
+            Theme(
+              data: theme.copyWith(
+                inputDecorationTheme: theme.inputDecorationTheme.copyWith(
+                  fillColor: colors.surfaceContainerLow,
+                ),
+              ),
+              child: child,
+            ),
+          ],
         ),
       ),
     );
@@ -538,8 +713,15 @@ class _ItemEditorDialog extends StatefulWidget {
   State<_ItemEditorDialog> createState() => _ItemEditorDialogState();
 }
 
-class _ItemEditorDialogState extends State<_ItemEditorDialog> {
+class _ItemEditorDialogState extends State<_ItemEditorDialog>
+    with WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
+  final _nameFocus = FocusNode();
+  final _quantityFocus = FocusNode();
+  final _noteFocus = FocusNode();
+  final _nameAnchor = GlobalKey();
+  final _quantityAnchor = GlobalKey();
+  final _noteAnchor = GlobalKey();
   late final TextEditingController _name = TextEditingController(
     text: widget.existing?.name ?? '',
   );
@@ -551,11 +733,53 @@ class _ItemEditorDialogState extends State<_ItemEditorDialog> {
   );
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    for (final focusNode in _focusNodes) {
+      focusNode.addListener(_scheduleFocusedFieldReveal);
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    for (final focusNode in _focusNodes) {
+      focusNode.removeListener(_scheduleFocusedFieldReveal);
+      focusNode.dispose();
+    }
     _name.dispose();
     _quantity.dispose();
     _note.dispose();
     super.dispose();
+  }
+
+  List<FocusNode> get _focusNodes => [_nameFocus, _quantityFocus, _noteFocus];
+
+  @override
+  void didChangeMetrics() {
+    _scheduleFocusedFieldReveal();
+  }
+
+  GlobalKey? get _focusedAnchor {
+    if (_nameFocus.hasFocus) return _nameAnchor;
+    if (_quantityFocus.hasFocus) return _quantityAnchor;
+    if (_noteFocus.hasFocus) return _noteAnchor;
+    return null;
+  }
+
+  void _scheduleFocusedFieldReveal() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final targetContext = _focusedAnchor?.currentContext;
+      if (targetContext == null) return;
+      Scrollable.ensureVisible(
+        targetContext,
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+      );
+    });
   }
 
   void _save() {
@@ -576,47 +800,77 @@ class _ItemEditorDialogState extends State<_ItemEditorDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return IosFormDialog(
+    const scrollPadding = EdgeInsets.fromLTRB(20, 20, 20, 100);
+    return IosFormSheet(
       title: widget.existing == null
           ? context.l10n.addItem
           : context.l10n.editItem,
       content: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
         child: Form(
           key: _formKey,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextFormField(
-                controller: _name,
-                autofocus: true,
-                decoration: InputDecoration(labelText: context.l10n.itemName),
-                validator: (value) => (value ?? '').trim().isEmpty
-                    ? context.l10n.itemNameRequired
-                    : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _quantity,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: context.l10n.itemQuantity,
+              KeyedSubtree(
+                key: _nameAnchor,
+                child: TextFormField(
+                  key: const Key('item-name-field'),
+                  controller: _name,
+                  focusNode: _nameFocus,
+                  textInputAction: TextInputAction.next,
+                  scrollPadding: scrollPadding,
+                  decoration: iosFormFieldDecoration(
+                    context,
+                    label: context.l10n.itemName,
+                  ),
+                  validator: (value) => (value ?? '').trim().isEmpty
+                      ? context.l10n.itemNameRequired
+                      : null,
                 ),
-                validator: (value) {
-                  final raw = (value ?? '').trim();
-                  if (raw.isEmpty) return null;
-                  final parsed = int.tryParse(raw);
-                  return parsed == null || parsed <= 0
-                      ? context.l10n.itemQuantityInvalid
-                      : null;
-                },
               ),
               const SizedBox(height: 12),
-              TextField(
-                controller: _note,
-                minLines: 2,
-                maxLines: 4,
-                decoration: InputDecoration(labelText: context.l10n.itemNote),
+              KeyedSubtree(
+                key: _quantityAnchor,
+                child: TextFormField(
+                  key: const Key('item-quantity-field'),
+                  controller: _quantity,
+                  focusNode: _quantityFocus,
+                  keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.next,
+                  scrollPadding: scrollPadding,
+                  decoration: iosFormFieldDecoration(
+                    context,
+                    label: context.l10n.itemQuantity,
+                  ),
+                  validator: (value) {
+                    final raw = (value ?? '').trim();
+                    if (raw.isEmpty) return null;
+                    final parsed = int.tryParse(raw);
+                    return parsed == null || parsed <= 0
+                        ? context.l10n.itemQuantityInvalid
+                        : null;
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
+              KeyedSubtree(
+                key: _noteAnchor,
+                child: TextField(
+                  key: const Key('item-note-field'),
+                  controller: _note,
+                  focusNode: _noteFocus,
+                  minLines: 2,
+                  maxLines: 4,
+                  keyboardType: TextInputType.multiline,
+                  textInputAction: TextInputAction.newline,
+                  scrollPadding: scrollPadding,
+                  decoration: iosFormFieldDecoration(
+                    context,
+                    label: context.l10n.itemNote,
+                  ),
+                ),
               ),
             ],
           ),
@@ -638,9 +892,14 @@ class _ItemEditorDialogState extends State<_ItemEditorDialog> {
 }
 
 class _SuggestionChips extends StatelessWidget {
-  const _SuggestionChips({required this.values, required this.onSelected});
+  const _SuggestionChips({
+    required this.values,
+    required this.selectedValues,
+    required this.onSelected,
+  });
 
   final List<String> values;
+  final List<String> selectedValues;
   final ValueChanged<String> onSelected;
 
   @override
@@ -659,15 +918,19 @@ class _SuggestionChips extends StatelessWidget {
           Wrap(
             spacing: 7,
             runSpacing: 7,
-            children: values
-                .map(
-                  (value) => ActionChip(
-                    visualDensity: VisualDensity.compact,
-                    label: Text(value),
-                    onPressed: () => onSelected(value),
-                  ),
-                )
-                .toList(),
+            children: values.map((value) {
+              final selected = selectedValues.any(
+                (selectedValue) =>
+                    selectedValue.toLowerCase() == value.toLowerCase(),
+              );
+              return FilterChip(
+                key: ValueKey('suggestion-$value'),
+                visualDensity: VisualDensity.compact,
+                selected: selected,
+                label: Text(value),
+                onSelected: (_) => onSelected(value),
+              );
+            }).toList(),
           ),
         ],
       ),

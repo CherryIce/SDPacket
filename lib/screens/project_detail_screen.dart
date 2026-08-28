@@ -45,21 +45,22 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     super.dispose();
   }
 
-  Future<void> _openEditor(String boxId) async {
-    await Navigator.push(
+  Future<String?> _openEditor(String boxId) {
+    return Navigator.push<String>(
       context,
-      MaterialPageRoute<void>(builder: (_) => BoxEditorScreen(boxId: boxId)),
+      MaterialPageRoute<String>(builder: (_) => BoxEditorScreen(boxId: boxId)),
     );
   }
 
   Future<void> _manualEntry() async {
-    final box = await StoreScope.of(
+    final boxId = await Navigator.push<String>(
       context,
-    ).createBox(projectId: widget.projectId);
-    if (!mounted) return;
-    await _openEditor(box.id);
-    if (!mounted) return;
-    final current = StoreScope.of(context).boxById(box.id);
+      MaterialPageRoute<String>(
+        builder: (_) => BoxEditorScreen.create(projectId: widget.projectId),
+      ),
+    );
+    if (!mounted || boxId == null) return;
+    final current = StoreScope.of(context).boxById(boxId);
     if (current != null &&
         current.physicalMarkStatus == PhysicalMarkStatus.pending) {
       await showPhysicalMarkReminder(context, current);
@@ -318,27 +319,22 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         IosActionSheetOption(
           label: context.l10n.editProject,
           value: _ProjectAction.edit,
-          icon: Icons.edit_outlined,
         ),
         IosActionSheetOption(
           label: context.l10n.exportCsv,
           value: _ProjectAction.csv,
-          icon: Icons.table_view_outlined,
         ),
         IosActionSheetOption(
           label: context.l10n.projectReport,
           value: _ProjectAction.report,
-          icon: Icons.picture_as_pdf_outlined,
         ),
         IosActionSheetOption(
           label: context.l10n.archive,
           value: _ProjectAction.archive,
-          icon: Icons.archive_outlined,
         ),
         IosActionSheetOption(
           label: context.l10n.delete,
           value: _ProjectAction.delete,
-          icon: Icons.delete_outline,
           isDestructive: true,
         ),
       ],
@@ -359,6 +355,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         : allMatchingBoxes.where(_matchesSelectedStage).toList();
     final stats = store.statsFor(widget.projectId);
     final activeBatch = store.activeEntryBatchForProject(widget.projectId);
+    final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
     return Scaffold(
       appBar: AppBar(
         title: Text(project.name),
@@ -375,25 +372,40 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
           ),
         ],
       ),
+      bottomNavigationBar: keyboardVisible
+          ? null
+          : _QuickEntryDock(
+              busy: _busy,
+              onCamera: () => _photoEntry(camera: true),
+              onGallery: () => _photoEntry(camera: false),
+              onVoice: _voiceEntry,
+              onManual: _manualEntry,
+            ),
       body: RefreshIndicator(
         onRefresh: () async => setState(() {}),
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+          key: const Key('project-detail-scroll'),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
           children: [
-            _ProgressCard(
+            _ProgressSummary(
               stats: stats,
-              selected: _stageFilters,
-              onToggle: (filter) => setState(() {
-                _stageFilters.contains(filter)
-                    ? _stageFilters.remove(filter)
-                    : _stageFilters.add(filter);
-              }),
-              onClear: () => setState(_stageFilters.clear),
+              onPendingMarks: stats.pendingMarks == 0
+                  ? null
+                  : () => Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) =>
+                            PendingMarksScreen(projectId: project.id),
+                      ),
+                    ),
             ),
             if (activeBatch != null) ...[
-              const SizedBox(height: 12),
-              Card(
+              const SizedBox(height: 10),
+              Material(
+                key: const Key('project-resume-batch'),
                 color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(14),
+                clipBehavior: Clip.antiAlias,
                 child: ListTile(
                   leading: const Icon(Icons.pending_actions_outlined),
                   title: Text(context.l10n.resumeBatch),
@@ -408,46 +420,20 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                 ),
               ),
             ],
-            if (stats.pendingMarks > 0) ...[
-              const SizedBox(height: 12),
-              Card(
-                color: Theme.of(context).colorScheme.tertiaryContainer,
-                child: ListTile(
-                  leading: const Icon(Icons.label_outline),
-                  title: Text(
-                    '${context.l10n.pendingPhysicalMark} · ${stats.pendingMarks}',
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                      builder: (_) => PendingMarksScreen(projectId: project.id),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-            const SizedBox(height: 20),
-            Text(
-              context.l10n.quickEntry,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
             const SizedBox(height: 10),
-            _QuickEntryGrid(
-              busy: _busy,
-              onCamera: () => _photoEntry(camera: true),
-              onGallery: () => _photoEntry(camera: false),
-              onVoice: _voiceEntry,
-              onManual: _manualEntry,
+            _StageFilterStrip(
+              stats: stats,
+              selected: _stageFilters,
+              onToggle: (filter) => setState(() {
+                _stageFilters.contains(filter)
+                    ? _stageFilters.remove(filter)
+                    : _stageFilters.add(filter);
+              }),
+              onClear: () => setState(_stageFilters.clear),
             ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _busy ? null : _exportLabels,
-              icon: const Icon(Icons.print_outlined),
-              label: Text(context.l10n.exportA4Pdf),
-            ),
-            const SizedBox(height: 22),
+            const SizedBox(height: 14),
             TextField(
+              key: const Key('project-box-search'),
               controller: _query,
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
@@ -456,42 +442,31 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                 suffixIcon: _query.text.isEmpty
                     ? null
                     : IconButton(
-                        onPressed: () => setState(_query.clear),
+                        onPressed: () => setState(() => _query.clear()),
                         icon: const Icon(Icons.clear),
                       ),
               ),
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    context.l10n.boxes,
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                ),
-                Text(context.l10n.boxCount(boxes.length)),
-              ],
+            const SizedBox(height: 18),
+            _BoxSectionHeader(
+              count: boxes.length,
+              busy: _busy,
+              onExportLabels: _exportLabels,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             if (boxes.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 30),
                 child: Center(child: Text(context.l10n.noResults)),
               )
             else
-              ...boxes.map(
-                (box) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _BoxCard(
-                    box: box,
-                    onTap: () => _openEditor(box.id),
-                    onQr: () => Navigator.push(
-                      context,
-                      MaterialPageRoute<void>(
-                        builder: (_) => QrLabelScreen(boxId: box.id),
-                      ),
-                    ),
+              _BoxGroup(
+                boxes: boxes,
+                onOpenBox: _openEditor,
+                onOpenQr: (boxId) => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => QrLabelScreen(boxId: boxId),
                   ),
                 ),
               ),
@@ -516,8 +491,85 @@ extension on _ProjectDetailScreenState {
       _stageFilters.any((filter) => _matchesStage(box, filter));
 }
 
-class _ProgressCard extends StatelessWidget {
-  const _ProgressCard({
+class _ProgressSummary extends StatelessWidget {
+  const _ProgressSummary({required this.stats, required this.onPendingMarks});
+
+  final ProjectStats stats;
+  final VoidCallback? onPendingMarks;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return Container(
+      key: const Key('project-progress-summary'),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: colors.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  context.l10n.progress,
+                  style: theme.textTheme.titleMedium,
+                ),
+              ),
+              Text(
+                context.l10n.boxCount(stats.total),
+                style: theme.textTheme.titleSmall,
+              ),
+            ],
+          ),
+          if (stats.pendingMarks > 0) ...[
+            const SizedBox(height: 10),
+            Material(
+              color: colors.errorContainer.withValues(alpha: 0.22),
+              borderRadius: BorderRadius.circular(12),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: onPendingMarks,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.label_outline,
+                        color: colors.primary,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          '${context.l10n.pendingPhysicalMark}  ${stats.pendingMarks}',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            color: colors.error,
+                          ),
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _StageFilterStrip extends StatelessWidget {
+  const _StageFilterStrip({
     required this.stats,
     required this.selected,
     required this.onToggle,
@@ -531,6 +583,9 @@ class _ProgressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textScaler = MediaQuery.textScalerOf(context);
+    final textStyle = theme.textTheme.labelSmall ?? const TextStyle();
     final metrics = <(_StageFilter, String, int, IconData)>[
       (
         _StageFilter.waitingToLoad,
@@ -557,60 +612,138 @@ class _ProgressCard extends StatelessWidget {
         Icons.warning_amber,
       ),
     ];
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    context.l10n.progress,
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
+    return Column(
+      key: const Key('project-stage-filters'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final minimumWidths = metrics.map((metric) {
+              final painter = TextPainter(
+                text: TextSpan(
+                  text: '${metric.$2} ${metric.$3}',
+                  style: textStyle,
                 ),
-                Text(context.l10n.boxCount(stats.total)),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(context.l10n.stageFilterHint),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: metrics
-                  .map(
-                    (metric) => FilterChip(
-                      selected: selected.contains(metric.$1),
-                      avatar: Icon(metric.$4, size: 18),
-                      label: Text('${metric.$2} ${metric.$3}'),
-                      onSelected: (_) => onToggle(metric.$1),
+                textDirection: Directionality.of(context),
+                textScaler: textScaler,
+                locale: Localizations.localeOf(context),
+                maxLines: 1,
+              )..layout();
+              return painter.width + 16 + 4 + 12;
+            }).toList();
+            final minimumRowWidth =
+                minimumWidths.fold<double>(0, (sum, width) => sum + width) +
+                (metrics.length - 1) * 6;
+            final useSingleRow = minimumRowWidth <= constraints.maxWidth;
+            if (useSingleRow) {
+              return Row(
+                children: [
+                  for (var index = 0; index < metrics.length; index++) ...[
+                    if (index > 0) const SizedBox(width: 6),
+                    Expanded(
+                      flex: (minimumWidths[index] * 10).ceil(),
+                      child: _StageFilterButton(
+                        metric: metrics[index],
+                        selected: selected.contains(metrics[index].$1),
+                        onPressed: () => onToggle(metrics[index].$1),
+                        allowLabelWrap: false,
+                      ),
                     ),
-                  )
-                  .toList(),
+                  ],
+                ],
+              );
+            }
+            final scale = textScaler.scale(12) / 12;
+            return GridView.builder(
+              itemCount: metrics.length,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisExtent: 52 + (scale - 1).clamp(0, 1) * 24,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+              ),
+              itemBuilder: (context, index) => _StageFilterButton(
+                metric: metrics[index],
+                selected: selected.contains(metrics[index].$1),
+                onPressed: () => onToggle(metrics[index].$1),
+                allowLabelWrap: true,
+              ),
+            );
+          },
+        ),
+        if (selected.isNotEmpty)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: onClear,
+              icon: const Icon(Icons.filter_alt_off_outlined, size: 18),
+              label: Text(context.l10n.clearFilters),
             ),
-            if (selected.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed: onClear,
-                  icon: const Icon(Icons.filter_alt_off_outlined),
-                  label: Text(context.l10n.clearFilters),
+          ),
+      ],
+    );
+  }
+}
+
+class _StageFilterButton extends StatelessWidget {
+  const _StageFilterButton({
+    required this.metric,
+    required this.selected,
+    required this.onPressed,
+    required this.allowLabelWrap,
+  });
+
+  final (_StageFilter, String, int, IconData) metric;
+  final bool selected;
+  final VoidCallback onPressed;
+  final bool allowLabelWrap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final foreground = selected ? colors.onPrimaryContainer : colors.onSurface;
+    return Material(
+      key: Key('project-stage-filter-${metric.$1.name}'),
+      color: selected ? colors.primaryContainer : colors.surfaceContainerLowest,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: selected ? colors.primary : colors.outlineVariant,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onPressed,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(metric.$4, size: 16, color: colors.primary),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  '${metric.$2} ${metric.$3}',
+                  maxLines: allowLabelWrap ? 2 : 1,
+                  overflow: TextOverflow.ellipsis,
+                  softWrap: allowLabelWrap,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: foreground),
                 ),
               ),
             ],
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _QuickEntryGrid extends StatelessWidget {
-  const _QuickEntryGrid({
+class _QuickEntryDock extends StatelessWidget {
+  const _QuickEntryDock({
     required this.busy,
     required this.onCamera,
     required this.onGallery,
@@ -627,43 +760,189 @@ class _QuickEntryGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final entries = [
-      (context.l10n.continuousCamera, Icons.camera_alt_outlined, onCamera),
-      (context.l10n.choosePhotos, Icons.photo_library_outlined, onGallery),
-      (context.l10n.voiceEntry, Icons.mic_none, onVoice),
-      (context.l10n.manualEntry, Icons.edit_note, onManual),
-    ];
-    final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
-    final entryHeight = (64 + (textScale - 1).clamp(0, 1) * 32).toDouble();
-    return GridView.builder(
-      itemCount: entries.length,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisExtent: entryHeight,
-        mainAxisSpacing: 10,
-        crossAxisSpacing: 10,
+      (
+        context.l10n.continuousCamera,
+        Icons.camera_alt_outlined,
+        onCamera,
+        true,
       ),
-      itemBuilder: (context, index) {
-        final entry = entries[index];
-        return FilledButton.tonal(
-          onPressed: busy ? null : entry.$3,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(entry.$2),
-              const SizedBox(width: 8),
-              Flexible(child: Text(entry.$1, textAlign: TextAlign.center)),
-            ],
-          ),
-        );
-      },
+      (
+        context.l10n.choosePhotos,
+        Icons.photo_library_outlined,
+        onGallery,
+        false,
+      ),
+      (context.l10n.voiceEntry, Icons.mic_none, onVoice, false),
+      (context.l10n.manualEntry, Icons.edit_note, onManual, false),
+    ];
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final textScale = MediaQuery.textScalerOf(context).scale(12) / 12;
+    final actionHeight = (80 + (textScale - 1).clamp(0, 1) * 32).toDouble();
+    return Material(
+      key: const Key('project-quick-entry-dock'),
+      color: colors.surfaceContainerLowest,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: colors.outlineVariant),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(context.l10n.quickEntry, style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: actionHeight,
+              child: Row(
+                children: [
+                  for (var index = 0; index < entries.length; index++) ...[
+                    if (index > 0) const SizedBox(width: 6),
+                    Expanded(
+                      child: _QuickEntryAction(
+                        label: entries[index].$1,
+                        icon: entries[index].$2,
+                        primary: entries[index].$4,
+                        onPressed: busy ? null : entries[index].$3,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
 
-class _BoxCard extends StatelessWidget {
-  const _BoxCard({required this.box, required this.onTap, required this.onQr});
+class _QuickEntryAction extends StatelessWidget {
+  const _QuickEntryAction({
+    required this.label,
+    required this.icon,
+    required this.primary,
+    required this.onPressed,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool primary;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Opacity(
+      opacity: onPressed == null ? 0.45 : 1,
+      child: Material(
+        color: primary ? colors.primaryContainer : colors.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(14),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onPressed,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: colors.onSurface, size: 23),
+                const SizedBox(height: 5),
+                Text(
+                  label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BoxSectionHeader extends StatelessWidget {
+  const _BoxSectionHeader({
+    required this.count,
+    required this.busy,
+    required this.onExportLabels,
+  });
+
+  final int count;
+  final bool busy;
+  final VoidCallback onExportLabels;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                context.l10n.boxes,
+                style: theme.textTheme.titleLarge,
+              ),
+            ),
+            Text(context.l10n.boxCount(count)),
+          ],
+        ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            key: const Key('project-export-labels'),
+            onPressed: busy ? null : onExportLabels,
+            icon: const Icon(Icons.print_outlined, size: 20),
+            label: Text(context.l10n.exportA4Pdf),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BoxGroup extends StatelessWidget {
+  const _BoxGroup({
+    required this.boxes,
+    required this.onOpenBox,
+    required this.onOpenQr,
+  });
+
+  final List<BoxRecord> boxes;
+  final ValueChanged<String> onOpenBox;
+  final ValueChanged<String> onOpenQr;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      key: const Key('project-box-group'),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (var index = 0; index < boxes.length; index++) ...[
+            if (index > 0) const Divider(height: 1, indent: 12, endIndent: 12),
+            _BoxRow(
+              box: boxes[index],
+              onTap: () => onOpenBox(boxes[index].id),
+              onQr: () => onOpenQr(boxes[index].id),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _BoxRow extends StatelessWidget {
+  const _BoxRow({required this.box, required this.onTap, required this.onQr});
 
   final BoxRecord box;
   final VoidCallback onTap;
@@ -675,77 +954,75 @@ class _BoxCard extends StatelessWidget {
       box.destinationRoom,
       box.memo,
     ].where((value) => value.isNotEmpty).join(' · ');
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: SizedBox.square(
-                  dimension: 64,
-                  child: box.photoPaths.isEmpty
-                      ? ColoredBox(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHighest,
-                          child: const Icon(Icons.inventory_2_outlined),
-                        )
-                      : Image.file(
-                          File(box.photoPaths.first),
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              const Icon(Icons.broken_image_outlined),
-                        ),
-                ),
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: SizedBox.square(
+                dimension: 72,
+                child: box.photoPaths.isEmpty
+                    ? ColoredBox(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                        child: const Icon(Icons.inventory_2_outlined, size: 30),
+                      )
+                    : Image.file(
+                        File(box.photoPaths.first),
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            const Icon(Icons.broken_image_outlined),
+                      ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          box.shortCode,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(width: 8),
-                        _StatusBadge(box: box),
-                      ],
-                    ),
-                    if (summary.isNotEmpty) ...[
-                      const SizedBox(height: 5),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
                       Text(
-                        summary,
-                        maxLines: 2,
+                        box.shortCode,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium,
                       ),
+                      _StatusBadge(box: box),
                     ],
-                    if (box.physicalMarkStatus ==
-                        PhysicalMarkStatus.pending) ...[
-                      const SizedBox(height: 5),
-                      Text(
-                        context.l10n.pendingPhysicalMark,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
+                  ),
+                  if (summary.isNotEmpty) ...[
+                    const SizedBox(height: 5),
+                    Text(summary, maxLines: 2, overflow: TextOverflow.ellipsis),
                   ],
-                ),
+                  if (box.physicalMarkStatus == PhysicalMarkStatus.pending) ...[
+                    const SizedBox(height: 5),
+                    Text(
+                      context.l10n.pendingPhysicalMark,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ],
               ),
-              IconButton(
-                tooltip: context.l10n.qrAndPrint,
-                onPressed: onQr,
-                icon: const Icon(Icons.qr_code_2),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 2),
+            IconButton(
+              tooltip: context.l10n.qrAndPrint,
+              onPressed: onQr,
+              icon: const Icon(Icons.qr_code_2),
+            ),
+            const Icon(Icons.chevron_right, size: 22),
+          ],
         ),
       ),
     );

@@ -13,10 +13,23 @@ class PhotoStorage {
   final Uuid _uuid;
 
   Future<List<XFile>> choosePhotos({int limit = 30}) async {
+    if (limit < 1) {
+      throw ArgumentError.value(limit, 'limit', 'must be at least 1');
+    }
+    if (limit == 1) {
+      final selected = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 86,
+        maxWidth: 2400,
+        requestFullMetadata: false,
+      );
+      return selected == null ? const [] : [selected];
+    }
     final selected = await picker.pickMultiImage(
       limit: limit,
       imageQuality: 86,
       maxWidth: 2400,
+      requestFullMetadata: false,
     );
     return selected.take(limit).toList(growable: false);
   }
@@ -39,8 +52,13 @@ class PhotoStorage {
     await directory.create(recursive: true);
     final extension = _safeExtension(source.path);
     final target = File('${directory.path}/${_uuid.v4()}$extension');
-    await File(source.path).copy(target.path);
-    return target.path;
+    try {
+      await source.saveTo(target.path);
+      return target.path;
+    } catch (_) {
+      if (await target.exists()) await target.delete();
+      rethrow;
+    }
   }
 
   Future<void> deleteIfManaged(String path) async {

@@ -21,6 +21,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projects => 'Moving projects';
 
   @override
+  String get activeProjects => 'Active';
+
+  @override
   String get newProject => 'New project';
 
   @override
@@ -306,6 +309,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get boxCode => 'Box code';
+
+  @override
+  String get boxInformation => 'Box information';
+
+  @override
+  String get contentsAndNotes => 'Contents & notes';
+
+  @override
+  String get movingAndFlags => 'Moving & flags';
 
   @override
   String get boxTitle => 'Title (optional)';

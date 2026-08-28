@@ -16,11 +16,8 @@ Future<void> showPhysicalMarkReminder(
     cancelLabel: context.l10n.later,
     options: PhysicalMarkMethod.values
         .map(
-          (value) => IosActionSheetOption(
-            label: value.label(context),
-            value: value,
-            icon: _methodIcon(value),
-          ),
+          (value) =>
+              IosActionSheetOption(label: value.label(context), value: value),
         )
         .toList(growable: false),
   );
@@ -28,10 +25,3 @@ Future<void> showPhysicalMarkReminder(
     await StoreScope.of(context).confirmPhysicalMark(box.id, method);
   }
 }
-
-IconData _methodIcon(PhysicalMarkMethod method) => switch (method) {
-  PhysicalMarkMethod.qrLabel => Icons.qr_code_2,
-  PhysicalMarkMethod.handwritten => Icons.edit_outlined,
-  PhysicalMarkMethod.stickyNote => Icons.sticky_note_2_outlined,
-  PhysicalMarkMethod.other => Icons.label_outline,
-};

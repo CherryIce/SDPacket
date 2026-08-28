@@ -95,6 +95,89 @@ void main() {
     expect(find.text('Voice entry'), findsOneWidget);
   });
 
+  testWidgets('redesigned home keeps its primary actions working', (
+    tester,
+  ) async {
+    final store = AppStore(repository: InMemoryAppRepository.onboarded());
+    await store.initialize(
+      const SampleSeed(
+        projectName: 'Sample move',
+        origin: 'Old home',
+        destination: 'New home',
+        memo: 'Coffee maker',
+      ),
+    );
+
+    await tester.pumpWidget(MovingBoxApp(store: store));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Active'), findsOneWidget);
+    expect(find.byKey(const Key('home-create-project')), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Global search'));
+    await tester.pumpAndSettle();
+    expect(find.text('Global search'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('More actions'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('home-more-sheet')), findsOneWidget);
+    expect(find.text('Archived projects'), findsOneWidget);
+    expect(find.text('Settings'), findsOneWidget);
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    expect(find.byType(SettingsScreen), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('More actions'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('home-more-cancel')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('home-more-sheet')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('home-create-project')));
+    await tester.pumpAndSettle();
+    expect(find.text('Create'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('home more sheet fits a narrow screen with larger text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+      tester.platformDispatcher.clearTextScaleFactorTestValue();
+    });
+    final store = AppStore(repository: InMemoryAppRepository.onboarded());
+    await store.initialize(
+      const SampleSeed(
+        projectName: 'Sample move',
+        origin: 'Old home',
+        destination: 'New home',
+        memo: 'Coffee maker',
+      ),
+    );
+
+    await tester.pumpWidget(MovingBoxApp(store: store));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('More actions'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('home-more-sheet')), findsOneWidget);
+    expect(find.byKey(const Key('home-more-archived')), findsOneWidget);
+    expect(find.byKey(const Key('home-more-settings')), findsOneWidget);
+    expect(find.byKey(const Key('home-more-cancel')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('switches between English and Chinese at runtime', (
     tester,
   ) async {
@@ -312,6 +395,11 @@ void main() {
   testWidgets('edits structured item details and unpacked state', (
     tester,
   ) async {
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+      tester.view.resetViewInsets();
+    });
     final store = AppStore(repository: InMemoryAppRepository.onboarded());
     await store.initialize(
       const SampleSeed(
@@ -335,6 +423,11 @@ void main() {
       320,
       scrollable: find.byType(Scrollable).first,
     );
+    await tester.drag(
+      find.byKey(const Key('project-detail-scroll')),
+      const Offset(0, -120),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('C-001'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
@@ -345,12 +438,57 @@ void main() {
     await tester.tap(find.text('Add item'));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextFormField).at(0), 'Coffee cup');
-    await tester.enterText(find.byType(TextFormField).at(1), '2');
-    await tester.enterText(find.byType(TextField).last, 'Blue cups');
+    expect(find.byType(IosFormSheet), findsOneWidget);
+    expect(find.byType(IosFormDialog), findsNothing);
+    expect(tester.testTextInput.isVisible, isFalse);
+
+    final nameField = tester.widget<TextField>(
+      find.descendant(
+        of: find.byKey(const Key('item-name-field')),
+        matching: find.byType(TextField),
+      ),
+    );
+    expect(nameField.decoration!.enabledBorder, isA<OutlineInputBorder>());
+
+    tester.view.physicalSize = const Size(390, 700);
+    tester.view.devicePixelRatio = 1;
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('item-note-field')));
+    await tester.pump();
+    tester.view.viewInsets = const FakeViewPadding(bottom: 360);
+    await tester.pumpAndSettle();
+
+    final keyboardTop = tester.view.physicalSize.height - 360;
+    final sheet = tester.getRect(
+      find.byKey(const Key('ios-form-sheet-surface')),
+    );
+    final actions = tester.getRect(
+      find.byKey(const Key('ios-form-sheet-actions')),
+    );
+    final focusedField = tester.getRect(
+      find.byKey(const Key('item-note-field')),
+    );
+    expect(sheet.bottom, closeTo(keyboardTop, 0.1));
+    expect(focusedField.bottom, lessThanOrEqualTo(actions.top));
+    expect(tester.takeException(), isNull);
+
+    tester.view.resetViewInsets();
+    tester.view.resetPhysicalSize();
+    tester.view.resetDevicePixelRatio();
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('item-name-field')),
+      'Coffee cup',
+    );
+    await tester.enterText(find.byKey(const Key('item-quantity-field')), '2');
+    await tester.enterText(
+      find.byKey(const Key('item-note-field')),
+      'Blue cups',
+    );
     await tester.tap(
       find.descendant(
-        of: find.byType(IosFormDialog),
+        of: find.byType(IosFormSheet),
         matching: find.widgetWithText(CupertinoButton, 'Save'),
       ),
     );

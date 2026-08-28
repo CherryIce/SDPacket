@@ -69,6 +69,14 @@ void main() {
     await tester.tap(find.text('packed'));
     await tester.pumpAndSettle();
     expect(find.byType(CupertinoActionSheet), findsOneWidget);
+    expect(find.byIcon(CupertinoIcons.check_mark), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(CupertinoActionSheet),
+        matching: find.byType(Icon),
+      ),
+      findsOneWidget,
+    );
 
     await tester.tap(find.widgetWithText(CupertinoActionSheetAction, 'loaded'));
     await tester.pumpAndSettle();

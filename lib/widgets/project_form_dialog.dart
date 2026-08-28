@@ -9,7 +9,7 @@ Future<MovingProject?> showProjectFormDialog(
   BuildContext context, {
   MovingProject? project,
 }) {
-  return showIosFormDialog<MovingProject>(
+  return showIosFormSheet<MovingProject>(
     context: context,
     builder: (_) => ProjectFormDialog(project: project),
   );
@@ -24,8 +24,17 @@ class ProjectFormDialog extends StatefulWidget {
   State<ProjectFormDialog> createState() => _ProjectFormDialogState();
 }
 
-class _ProjectFormDialogState extends State<ProjectFormDialog> {
+class _ProjectFormDialogState extends State<ProjectFormDialog>
+    with WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
+  final _nameFocus = FocusNode();
+  final _originFocus = FocusNode();
+  final _destinationFocus = FocusNode();
+  final _prefixFocus = FocusNode();
+  final _nameAnchor = GlobalKey();
+  final _originAnchor = GlobalKey();
+  final _destinationAnchor = GlobalKey();
+  final _prefixAnchor = GlobalKey();
   late final TextEditingController _name;
   late final TextEditingController _origin;
   late final TextEditingController _destination;
@@ -40,15 +49,58 @@ class _ProjectFormDialogState extends State<ProjectFormDialog> {
     _origin = TextEditingController(text: project?.origin ?? '');
     _destination = TextEditingController(text: project?.destination ?? '');
     _prefix = TextEditingController(text: project?.boxPrefix ?? 'C');
+    WidgetsBinding.instance.addObserver(this);
+    for (final focusNode in _focusNodes) {
+      focusNode.addListener(_scheduleFocusedFieldReveal);
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    for (final focusNode in _focusNodes) {
+      focusNode.removeListener(_scheduleFocusedFieldReveal);
+      focusNode.dispose();
+    }
     _name.dispose();
     _origin.dispose();
     _destination.dispose();
     _prefix.dispose();
     super.dispose();
+  }
+
+  List<FocusNode> get _focusNodes => [
+    _nameFocus,
+    _originFocus,
+    _destinationFocus,
+    _prefixFocus,
+  ];
+
+  @override
+  void didChangeMetrics() {
+    _scheduleFocusedFieldReveal();
+  }
+
+  GlobalKey? get _focusedAnchor {
+    if (_nameFocus.hasFocus) return _nameAnchor;
+    if (_originFocus.hasFocus) return _originAnchor;
+    if (_destinationFocus.hasFocus) return _destinationAnchor;
+    if (_prefixFocus.hasFocus) return _prefixAnchor;
+    return null;
+  }
+
+  void _scheduleFocusedFieldReveal() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final targetContext = _focusedAnchor?.currentContext;
+      if (targetContext == null) return;
+      Scrollable.ensureVisible(
+        targetContext,
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+      );
+    });
   }
 
   Future<void> _submit() async {
@@ -83,45 +135,81 @@ class _ProjectFormDialogState extends State<ProjectFormDialog> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.project != null;
-    return IosFormDialog(
+    const scrollPadding = EdgeInsets.fromLTRB(20, 20, 20, 100);
+    return IosFormSheet(
       title: isEditing ? context.l10n.editProject : context.l10n.newProject,
       content: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
         child: Form(
           key: _formKey,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextFormField(
-                controller: _name,
-                autofocus: true,
-                textInputAction: TextInputAction.next,
-                decoration: InputDecoration(
-                  labelText: context.l10n.projectName,
-                ),
-                validator: (value) => (value ?? '').trim().isEmpty ? '' : null,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _origin,
-                textInputAction: TextInputAction.next,
-                decoration: InputDecoration(labelText: context.l10n.origin),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _destination,
-                textInputAction: TextInputAction.next,
-                decoration: InputDecoration(
-                  labelText: context.l10n.destination,
+              KeyedSubtree(
+                key: _nameAnchor,
+                child: TextFormField(
+                  key: const Key('project-name-field'),
+                  controller: _name,
+                  focusNode: _nameFocus,
+                  textInputAction: TextInputAction.next,
+                  scrollPadding: scrollPadding,
+                  decoration: iosFormFieldDecoration(
+                    context,
+                    label: context.l10n.projectName,
+                  ),
+                  validator: (value) =>
+                      (value ?? '').trim().isEmpty ? '' : null,
                 ),
               ),
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _prefix,
-                maxLength: 6,
-                textCapitalization: TextCapitalization.characters,
-                decoration: InputDecoration(labelText: context.l10n.boxPrefix),
-                validator: (value) => (value ?? '').trim().isEmpty ? '' : null,
+              KeyedSubtree(
+                key: _originAnchor,
+                child: TextField(
+                  key: const Key('project-origin-field'),
+                  controller: _origin,
+                  focusNode: _originFocus,
+                  textInputAction: TextInputAction.next,
+                  scrollPadding: scrollPadding,
+                  decoration: iosFormFieldDecoration(
+                    context,
+                    label: context.l10n.origin,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              KeyedSubtree(
+                key: _destinationAnchor,
+                child: TextField(
+                  key: const Key('project-destination-field'),
+                  controller: _destination,
+                  focusNode: _destinationFocus,
+                  textInputAction: TextInputAction.next,
+                  scrollPadding: scrollPadding,
+                  decoration: iosFormFieldDecoration(
+                    context,
+                    label: context.l10n.destination,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              KeyedSubtree(
+                key: _prefixAnchor,
+                child: TextFormField(
+                  key: const Key('project-prefix-field'),
+                  controller: _prefix,
+                  focusNode: _prefixFocus,
+                  maxLength: 6,
+                  textInputAction: TextInputAction.done,
+                  textCapitalization: TextCapitalization.characters,
+                  scrollPadding: scrollPadding,
+                  decoration: iosFormFieldDecoration(
+                    context,
+                    label: context.l10n.boxPrefix,
+                  ),
+                  validator: (value) =>
+                      (value ?? '').trim().isEmpty ? '' : null,
+                ),
               ),
             ],
           ),

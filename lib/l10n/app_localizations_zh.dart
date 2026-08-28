@@ -21,6 +21,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get projects => '搬家项目';
 
   @override
+  String get activeProjects => '进行中';
+
+  @override
   String get newProject => '新建项目';
 
   @override
@@ -298,6 +301,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get boxCode => '箱号';
+
+  @override
+  String get boxInformation => '箱子信息';
+
+  @override
+  String get contentsAndNotes => '内容与备注';
+
+  @override
+  String get movingAndFlags => '搬运与标记';
 
   @override
   String get boxTitle => '标题（可选）';

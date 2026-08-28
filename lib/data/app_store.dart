@@ -324,6 +324,8 @@ class AppStore extends ChangeNotifier {
     List<BoxItem> items = const [],
     List<String> photoPaths = const [],
     bool isPriority = false,
+    MoveStatus moveStatus = MoveStatus.draft,
+    Set<BoxIssue> issues = const {},
     String? entryBatchId,
   }) async {
     final projectIndex = _projects.indexWhere(
@@ -347,6 +349,8 @@ class AppStore extends ChangeNotifier {
       items: _cleanItems(items),
       photoPaths: photoPaths,
       isPriority: isPriority,
+      moveStatus: moveStatus,
+      issues: issues,
       createdAt: now,
       updatedAt: now,
     );

@@ -89,7 +89,7 @@ class _SearchResult extends StatelessWidget {
         trailing: const Icon(Icons.chevron_right),
         onTap: () => Navigator.push(
           context,
-          MaterialPageRoute<void>(
+          MaterialPageRoute<String>(
             builder: (_) => BoxEditorScreen(boxId: box.id),
           ),
         ),

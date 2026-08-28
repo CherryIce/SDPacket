@@ -127,13 +127,18 @@ abstract interface class AppRepository {
 }
 
 class FileAppRepository implements AppRepository {
+  FileAppRepository({Future<Directory> Function()? supportDirectory})
+    : _supportDirectory =
+          supportDirectory ?? (() => getApplicationSupportDirectory());
+
+  final Future<Directory> Function() _supportDirectory;
   File? _dataFile;
   File? _preferencesFile;
 
   Future<File> _resolveDataFile() async {
     final cached = _dataFile;
     if (cached != null) return cached;
-    final support = await getApplicationSupportDirectory();
+    final support = await _supportDirectory();
     final directory = Directory('${support.path}/moving_box');
     await directory.create(recursive: true);
     return _dataFile = File('${directory.path}/app_data.json');
@@ -142,7 +147,7 @@ class FileAppRepository implements AppRepository {
   Future<File> _resolvePreferencesFile() async {
     final cached = _preferencesFile;
     if (cached != null) return cached;
-    final support = await getApplicationSupportDirectory();
+    final support = await _supportDirectory();
     final directory = Directory('${support.path}/moving_box');
     await directory.create(recursive: true);
     return _preferencesFile = File('${directory.path}/preferences.json');
@@ -153,11 +158,17 @@ class FileAppRepository implements AppRepository {
     final file = await _resolveDataFile();
     if (!await file.exists()) return null;
     try {
-      return AppSnapshot.fromBytes(await file.readAsBytes());
+      return _restoreManagedPhotoPaths(
+        AppSnapshot.fromBytes(await file.readAsBytes()),
+        file.parent,
+      );
     } on FormatException {
       final backup = File('${file.path}.bak');
       if (!await backup.exists()) rethrow;
-      return AppSnapshot.fromBytes(await backup.readAsBytes());
+      return _restoreManagedPhotoPaths(
+        AppSnapshot.fromBytes(await backup.readAsBytes()),
+        file.parent,
+      );
     }
   }
 
@@ -166,7 +177,8 @@ class FileAppRepository implements AppRepository {
     final file = await _resolveDataFile();
     final temporary = File('${file.path}.tmp');
     final backup = File('${file.path}.bak');
-    await temporary.writeAsBytes(snapshot.toBytes(), flush: true);
+    final portable = _makeManagedPhotoPathsPortable(snapshot);
+    await temporary.writeAsBytes(portable.toBytes(), flush: true);
     if (await file.exists()) await file.copy(backup.path);
     await temporary.rename(file.path);
   }
@@ -212,6 +224,73 @@ class FileAppRepository implements AppRepository {
     await temporary.writeAsString(jsonEncode(preferences), flush: true);
     await temporary.rename(file.path);
   }
+}
+
+AppSnapshot _restoreManagedPhotoPaths(
+  AppSnapshot snapshot,
+  Directory movingBoxDirectory,
+) {
+  final managedPhotoDirectory = Directory('${movingBoxDirectory.path}/photos');
+  return _copySnapshotWithPhotoPaths(
+    snapshot,
+    (path) => _absoluteManagedPhotoPath(path, managedPhotoDirectory) ?? path,
+  );
+}
+
+AppSnapshot _makeManagedPhotoPathsPortable(AppSnapshot snapshot) =>
+    _copySnapshotWithPhotoPaths(
+      snapshot,
+      (path) => _portableManagedPhotoPath(path) ?? path,
+    );
+
+AppSnapshot _copySnapshotWithPhotoPaths(
+  AppSnapshot snapshot,
+  String Function(String path) transform,
+) => AppSnapshot(
+  projects: snapshot.projects,
+  boxes: snapshot.boxes
+      .map(
+        (box) => box.copyWith(
+          photoPaths: box.photoPaths.map(transform).toList(growable: false),
+        ),
+      )
+      .toList(growable: false),
+  entryBatches: snapshot.entryBatches,
+  hasSeededExample: snapshot.hasSeededExample,
+);
+
+String? _portableManagedPhotoPath(String path) {
+  final normalized = path.replaceAll('\\', '/');
+  if (normalized.startsWith('photos/')) {
+    return _safeManagedPhotoPath(normalized);
+  }
+  const marker = '/moving_box/photos/';
+  final markerIndex = normalized.lastIndexOf(marker);
+  if (markerIndex < 0) return null;
+  return _safeManagedPhotoPath(
+    'photos/${normalized.substring(markerIndex + marker.length)}',
+  );
+}
+
+String? _absoluteManagedPhotoPath(
+  String path,
+  Directory managedPhotoDirectory,
+) {
+  final portable = _portableManagedPhotoPath(path);
+  if (portable == null) return null;
+  final fileName = portable.substring('photos/'.length);
+  return '${managedPhotoDirectory.path}/$fileName';
+}
+
+String? _safeManagedPhotoPath(String path) {
+  final fileName = path.substring('photos/'.length);
+  if (fileName.isEmpty ||
+      fileName == '.' ||
+      fileName == '..' ||
+      fileName.contains('/')) {
+    return null;
+  }
+  return 'photos/$fileName';
 }
 
 class InMemoryAppRepository implements AppRepository {
