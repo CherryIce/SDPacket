@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#174f43">
+    <meta name="color-scheme" content="light">
+    <meta
+      name="description"
+      content="搬家箱是一款本地优先的搬家整理工具，用照片、编号、二维码和搬运状态，把纸箱与数字记录稳稳对应起来。"
+    >
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="搬家箱 — 每一个箱子，都找得到">
+    <meta
+      property="og:description"
+      content="快速登记、实体标记、连续扫码、离线查找。搬家的每一步，都有记录可循。"
+    >
+    <title>搬家箱 — 每一个箱子，都找得到</title>
+    <link rel="icon" href="assets/app-icon.png">
+    <link rel="apple-touch-icon" href="assets/app-icon.png">
+    <link rel="stylesheet" href="styles.css">
+    <script src="site.js" defer></script>
+  </head>
+  <body data-page="home">
+    <a class="skip-link" href="#main" data-zh="跳到主要内容" data-en="Skip to main content">跳到主要内容</a>
+
+    <header class="site-header" data-header>
+      <div class="shell header-inner">
+        <a
+          class="brand"
+          href="#top"
+          data-aria-zh="搬家箱首页"
+          data-aria-en="Moving Box home"
+          aria-label="搬家箱首页"
+        >
+          <img src="assets/app-icon.png" alt="" width="44" height="44">
+          <span data-zh="搬家箱" data-en="Moving Box">搬家箱</span>
+        </a>
+
+        <button
+          class="menu-button"
+          type="button"
+          aria-expanded="false"
+          aria-controls="site-nav"
+          data-menu-button
+        >
+          <span class="sr-only" data-zh="打开导航" data-en="Open navigation">打开导航</span>
+          <span></span><span></span><span></span>
+        </button>
+
+        <nav
+          class="site-nav"
+          id="site-nav"
+          data-nav
+          data-aria-zh="主要导航"
+          data-aria-en="Main navigation"
+          aria-label="主要导航"
+        >
+          <a href="#workflow" data-zh="搬家流程" data-en="Workflow">搬家流程</a>
+          <a href="#features" data-zh="核心功能" data-en="Features">核心功能</a>
+          <a href="#privacy" data-zh="隐私优先" data-en="Privacy">隐私优先</a>
+          <a href="privacy.html" data-language-link data-zh="隐私政策" data-en="Privacy Policy">隐私政策</a>
+          <div class="language-switch" role="group" aria-label="语言 / Language">
+            <button type="button" data-lang-choice="zh" aria-pressed="true">中</button>
+            <span aria-hidden="true"></span>
+            <button type="button" data-lang-choice="en" aria-pressed="false">EN</button>
+          </div>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="top">
+        <div class="route-lines" aria-hidden="true"></div>
+        <div class="shell hero-layout">
+          <div class="hero-copy">
+            <div class="eyebrow">
+              <span class="eyebrow-mark" aria-hidden="true">C-001</span>
+              <span data-zh="本地优先的搬家整理工具" data-en="A local-first moving organizer">本地优先的搬家整理工具</span>
+            </div>
+            <h1>
+              <span data-zh="每一个箱子，" data-en="Every box.">每一个箱子，</span>
+              <span class="accent-text" data-zh="都找得到。" data-en="Right where it belongs.">都找得到。</span>
+            </h1>
+            <p class="hero-lede" data-zh="从打包前的快速登记，到装车、到达和拆箱，用照片、编号与二维码把纸箱和数字记录稳稳对应起来。" data-en="From the first packed box to loading, arrival, and unpacking, keep physical boxes aligned with photos, readable codes, and QR labels.">
+              从打包前的快速登记，到装车、到达和拆箱，用照片、编号与二维码把纸箱和数字记录稳稳对应起来。
+            </p>
+            <div class="hero-actions">
+              <a class="button button-primary" href="#workflow">
+                <span data-zh="看看如何使用" data-en="See the workflow">看看如何使用</span>
+                <span aria-hidden="true">↓</span>
+              </a>
+              <a class="button button-secondary" href="privacy.html" data-language-link>
+                <span data-zh="阅读隐私政策" data-en="Read the privacy policy">阅读隐私政策</span>
+              </a>
+            </div>
+            <ul class="trust-list" data-aria-zh="产品原则" data-aria-en="Product principles" aria-label="产品原则">
+              <li><span aria-hidden="true">✓</span><span data-zh="无需注册" data-en="No account">无需注册</span></li>
+              <li><span aria-hidden="true">✓</span><span data-zh="核心记录默认留在设备上" data-en="Core records stay on your device">核心记录默认留在设备上</span></li>
+              <li><span aria-hidden="true">✓</span><span data-zh="无广告、无行为分析" data-en="No ads or behavioral analytics">无广告、无行为分析</span></li>
+            </ul>
+          </div>
+
+          <div class="hero-visual">
+            <div class="packing-card card-a" aria-hidden="true">
+              <span>01</span>
+              <small data-zh="登记" data-en="LOG">登记</small>
+            </div>
+            <div class="packing-card card-b" aria-hidden="true">
+              <span>02</span>
+              <small data-zh="标记" data-en="LABEL">标记</small>
+            </div>
+            <div class="packing-card card-c" aria-hidden="true">
+              <span>03</span>
+              <small data-zh="到达" data-en="ARRIVE">到达</small>
+            </div>
+            <div class="phone phone-main">
+              <img
+                src="assets/project-screen.png"
+                data-alt-zh="搬家箱项目详情界面，展示搬家进度、箱子列表和快速登记入口"
+                data-alt-en="Moving Box project screen showing move progress, box records, and quick capture options"
+                alt="搬家箱项目详情界面，展示搬家进度、箱子列表和快速登记入口"
+                width="585"
+                height="1266"
+              >
+            </div>
+            <div class="phone phone-back">
+              <img
+                src="assets/home-screen.png"
+                data-alt-zh="搬家箱项目首页，展示示例搬家项目和进度摘要"
+                data-alt-en="Moving Box home screen showing a sample move and progress summary"
+                alt="搬家箱项目首页，展示示例搬家项目和进度摘要"
+                width="603"
+                height="1311"
+              >
+            </div>
+            <div class="scan-chip" aria-hidden="true">
+              <span class="mini-qr"></span>
+              <div><small data-zh="扫码确认" data-en="Scan confirmed">扫码确认</small><strong data-zh="C-002 已到达" data-en="C-002 arrived">C-002 已到达</strong></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="proof-strip" aria-label="产品能力摘要">
+        <div class="shell proof-grid">
+          <div><strong data-zh="4 种登记方式" data-en="4 ways to capture">4 种登记方式</strong><span data-zh="连续拍照、批量选图、语音、手动" data-en="Camera, photo batch, voice, and manual">连续拍照、批量选图、语音、手动</span></div>
+          <div><strong data-zh="完整搬运状态" data-en="Full move status">完整搬运状态</strong><span data-zh="已打包、已装车、已到达、已拆箱" data-en="Packed, loaded, arrived, unpacked">已打包、已装车、已到达、已拆箱</span></div>
+          <div><strong data-zh="二维码 + 可读箱号" data-en="QR + readable code">二维码 + 可读箱号</strong><span data-zh="标签受损时仍可搜索" data-en="Search still works when labels are damaged">标签受损时仍可搜索</span></div>
+          <div><strong data-zh="可迁移的本地数据" data-en="Portable local data">可迁移的本地数据</strong><span data-zh="CSV、PDF 与校验备份包" data-en="CSV, PDF, and verified backups">CSV、PDF 与校验备份包</span></div>
+        </div>
+      </section>
+
+      <section class="section workflow-section" id="workflow">
+        <div class="shell">
+          <div class="section-heading centered">
+            <span class="section-kicker" data-zh="一条完整的搬家线索" data-en="One continuous moving trail">一条完整的搬家线索</span>
+            <h2 data-zh="从封箱到拆箱，少一次翻找。" data-en="From packing to unpacking, search less.">从封箱到拆箱，少一次翻找。</h2>
+            <p data-zh="每一步只记录当下真正需要的信息，之后仍可继续补照片、房间、物品和状态。" data-en="Capture only what matters in the moment, then add photos, rooms, items, and status whenever you are ready.">每一步只记录当下真正需要的信息，之后仍可继续补照片、房间、物品和状态。</p>
+          </div>
+
+          <ol class="workflow-grid">
+            <li class="workflow-card">
+              <div class="step-top"><span>01</span><i aria-hidden="true">●</i></div>
+              <h3 data-zh="快速登记" data-en="Capture quickly">快速登记</h3>
+              <p data-zh="连续拍箱体、一次选择多张照片、说一句备注，或直接手动建箱。每个箱子自动获得项目内唯一编号。" data-en="Take consecutive box photos, choose a batch, dictate a note, or start manually. Every box receives a unique code within the move.">连续拍箱体、一次选择多张照片、说一句备注，或直接手动建箱。每个箱子自动获得项目内唯一编号。</p>
+            </li>
+            <li class="workflow-card">
+              <div class="step-top"><span>02</span><i aria-hidden="true">◆</i></div>
+              <h3 data-zh="对应实体纸箱" data-en="Label the physical box">对应实体纸箱</h3>
+              <p data-zh="手写箱号、贴便利贴或打印二维码标签，并单独确认实体标记状态，避免照片和纸箱错位。" data-en="Write the code, use a sticky note, or print a QR label, then confirm that the digital record matches the physical box.">手写箱号、贴便利贴或打印二维码标签，并单独确认实体标记状态，避免照片和纸箱错位。</p>
+            </li>
+            <li class="workflow-card">
+              <div class="step-top"><span>03</span><i aria-hidden="true">→</i></div>
+              <h3 data-zh="扫码推进状态" data-en="Scan through the move">扫码推进状态</h3>
+              <p data-zh="装车、到达和拆箱时连续扫码，批量推进状态；重复扫描、疑似遗漏和损坏都有明确提示。" data-en="Scan continuously while loading, arriving, and unpacking. Duplicate scans, suspected missing boxes, and damage stay visible.">装车、到达和拆箱时连续扫码，批量推进状态；重复扫描、疑似遗漏和损坏都有明确提示。</p>
+            </li>
+            <li class="workflow-card">
+              <div class="step-top"><span>04</span><i aria-hidden="true">✓</i></div>
+              <h3 data-zh="查找与收尾" data-en="Find and close out">查找与收尾</h3>
+              <p data-zh="按箱号、物品、房间、位置或标签离线搜索，并生成项目收尾 PDF，快速核对未到达与未拆箱项目。" data-en="Search offline by box code, item, room, location, or tag, then create a closeout PDF for missing and still-packed boxes.">按箱号、物品、房间、位置或标签离线搜索，并生成项目收尾 PDF，快速核对未到达与未拆箱项目。</p>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="section features-section" id="features">
+        <div class="shell">
+          <div class="section-heading split-heading">
+            <div>
+              <span class="section-kicker" data-zh="围绕真实搬家现场" data-en="Made for real moves">围绕真实搬家现场</span>
+              <h2 data-zh="信息够用，操作够快。" data-en="Enough detail. No extra friction.">信息够用，操作够快。</h2>
+            </div>
+            <p data-zh="核心流程不依赖账号或云端。网络不稳定时，登记、搜索、扫码和本地导出仍有清晰的使用路径。" data-en="The core workflow does not require an account or developer cloud. Capture, search, scan, and local export remain clear when connectivity is poor.">核心流程不依赖账号或云端。网络不稳定时，登记、搜索、扫码和本地导出仍有清晰的使用路径。</p>
+          </div>
+
+          <div class="feature-bento">
+            <article class="feature-tile feature-wide status-feature">
+              <div class="feature-copy">
+                <span class="mini-kicker" data-zh="搬运看板" data-en="MOVE BOARD">搬运看板</span>
+                <h3 data-zh="哪些还没到，打开就知道。" data-en="See what has not arrived yet.">哪些还没到，打开就知道。</h3>
+                <p data-zh="待装车、未到达、未拆箱和疑似遗漏可组合筛选。每次状态变化保留时间与操作来源，并可撤销最近一次误操作。" data-en="Combine filters for not loaded, not arrived, not unpacked, and suspected missing. Status history records time and source, with a way to undo the latest mistake.">待装车、未到达、未拆箱和疑似遗漏可组合筛选。每次状态变化保留时间与操作来源，并可撤销最近一次误操作。</p>
+              </div>
+              <div class="status-demo" aria-hidden="true">
+                <div class="status-row is-done"><span>✓</span><b data-zh="已打包" data-en="Packed">已打包</b><small>12</small></div>
+                <div class="status-row is-live"><span>→</span><b data-zh="运输中" data-en="In transit">运输中</b><small>08</small></div>
+                <div class="status-row"><span>□</span><b data-zh="待拆箱" data-en="To unpack">待拆箱</b><small>04</small></div>
+              </div>
+            </article>
+
+            <article class="feature-tile qr-feature">
+              <span class="mini-kicker" data-zh="实体标记" data-en="PHYSICAL LABELS">实体标记</span>
+              <div class="large-qr" aria-hidden="true"></div>
+              <h3 data-zh="二维码不是唯一答案。" data-en="QR is not the only answer.">二维码不是唯一答案。</h3>
+              <p data-zh="标签同时保留肉眼可读箱号。即使二维码污损，仍可按编号和内容搜索。" data-en="Every label keeps a readable box code, so search still works when a QR label is damaged.">标签同时保留肉眼可读箱号。即使二维码污损，仍可按编号和内容搜索。</p>
+            </article>
+
+            <article class="feature-tile export-feature">
+              <span class="mini-kicker" data-zh="导出与恢复" data-en="EXPORT &amp; RESTORE">导出与恢复</span>
+              <h3 data-zh="记录在你手里，也能带走。" data-en="Your records remain portable.">记录在你手里，也能带走。</h3>
+              <p data-zh="导出 CSV、标签 PDF、收尾报告和带照片的版本化备份包；恢复前先验证清单与 SHA-256 校验和。" data-en="Export CSV, label PDFs, closeout reports, and versioned backups with photos. Manifests and SHA-256 checks are validated before restore.">导出 CSV、标签 PDF、收尾报告和带照片的版本化备份包；恢复前先验证清单与 SHA-256 校验和。</p>
+              <div class="file-stack" aria-hidden="true"><span>CSV</span><span>PDF</span><span>ZIP</span></div>
+            </article>
+
+            <article class="feature-tile search-feature">
+              <div class="feature-copy">
+                <span class="mini-kicker" data-zh="离线搜索" data-en="OFFLINE SEARCH">离线搜索</span>
+                <h3 data-zh="记得“咖啡机”，就能找到那个箱子。" data-en="Remember “coffee maker”? Find the box.">记得“咖啡机”，就能找到那个箱子。</h3>
+                <p data-zh="搜索箱号、标题、备注、物品、房间、当前位置和标签，不需要把清单上传到服务器。" data-en="Search codes, titles, notes, items, rooms, current locations, and tags without uploading the list to a developer server.">搜索箱号、标题、备注、物品、房间、当前位置和标签，不需要把清单上传到服务器。</p>
+              </div>
+              <div class="search-demo" aria-hidden="true">
+                <span>⌕</span><b data-zh="咖啡机" data-en="coffee maker">咖啡机</b><i></i>
+                <div><small>C-001</small><strong data-zh="厨房 · 新家" data-en="Kitchen · New home">厨房 · 新家</strong></div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section privacy-section" id="privacy">
+        <div class="shell privacy-layout">
+          <div class="privacy-copy">
+            <span class="section-kicker section-kicker-light" data-zh="隐私不是附加项" data-en="Privacy is part of the workflow">隐私不是附加项</span>
+            <h2 data-zh="家的物品清单，不该先经过别人的服务器。" data-en="Your home inventory should not need someone else’s server.">家的物品清单，不该先经过别人的服务器。</h2>
+            <p data-zh="项目、箱子、备注、物品和照片默认保存在应用目录。应用当前不提供账号、云同步、广告或行为分析，也不把核心搬家记录发送给开发者服务器。" data-en="Projects, boxes, notes, items, and photos are stored in the app’s local directory by default. The current app has no accounts, cloud sync, ads, or behavioral analytics, and does not send core moving records to developer servers.">项目、箱子、备注、物品和照片默认保存在应用目录。应用当前不提供账号、云同步、广告或行为分析，也不把核心搬家记录发送给开发者服务器。</p>
+            <a class="text-link" href="privacy.html" data-language-link>
+              <span data-zh="查看完整隐私政策" data-en="Read the full privacy policy">查看完整隐私政策</span><span aria-hidden="true">↗</span>
+            </a>
+          </div>
+          <div class="privacy-ledger">
+            <div class="ledger-head"><span data-zh="数据路径" data-en="DATA PATH">数据路径</span><small data-zh="当前版本" data-en="CURRENT VERSION">当前版本</small></div>
+            <div class="ledger-row"><span data-zh="项目与箱子记录" data-en="Projects and box records">项目与箱子记录</span><strong data-zh="本机" data-en="On device">本机</strong></div>
+            <div class="ledger-row"><span data-zh="照片副本" data-en="Photo copies">照片副本</span><strong data-zh="应用目录" data-en="App directory">应用目录</strong></div>
+            <div class="ledger-row"><span data-zh="二维码内容" data-en="QR contents">二维码内容</span><strong data-zh="仅标识信息" data-en="Identifiers only">仅标识信息</strong></div>
+            <div class="ledger-row"><span data-zh="导出文件" data-en="Exported files">导出文件</span><strong data-zh="由你选择去向" data-en="You choose where">由你选择去向</strong></div>
+            <div class="ledger-row"><span data-zh="广告 / 行为分析" data-en="Ads / behavioral analytics">广告 / 行为分析</span><strong data-zh="未接入" data-en="Not included">未接入</strong></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section closing-section">
+        <div class="shell closing-card">
+          <div>
+            <span class="section-kicker" data-zh="为下一次搬家留一条清晰线索" data-en="Leave a clear trail for your next move">为下一次搬家留一条清晰线索</span>
+            <h2 data-zh="箱子会移动，记录别跟丢。" data-en="Boxes move. Your records should keep up.">箱子会移动，记录别跟丢。</h2>
+          </div>
+          <a class="button button-dark" href="#top"><span data-zh="返回顶部" data-en="Back to top">返回顶部</span><span aria-hidden="true">↑</span></a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="shell footer-inner">
+        <div class="footer-brand">
+          <img src="assets/app-icon.png" alt="" width="40" height="40">
+          <div><strong data-zh="搬家箱" data-en="Moving Box">搬家箱</strong><small data-zh="本地优先的搬家整理工具" data-en="A local-first moving organizer">本地优先的搬家整理工具</small></div>
+        </div>
+        <nav data-aria-zh="页脚导航" data-aria-en="Footer navigation" aria-label="页脚导航">
+          <a href="#workflow" data-zh="搬家流程" data-en="Workflow">搬家流程</a>
+          <a href="privacy.html" data-language-link data-zh="隐私政策" data-en="Privacy Policy">隐私政策</a>
+        </nav>
+        <p>© <span data-current-year>2026</span> <span data-zh="搬家箱" data-en="Moving Box">搬家箱</span></p>
+      </div>
+    </footer>
+  </body>
+</html>
